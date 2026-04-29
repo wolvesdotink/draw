@@ -1,0 +1,38 @@
+[package]
+name = "draw"
+version = "0.1.0"
+description = "Local-first Excalidraw desktop app"
+authors = ["Wolves <https://wolves.ink>"]
+edition = "2021"
+license = "MIT"
+homepage = "https://wolves.ink"
+repository = "https://github.com/wolvessoftware/draw"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[lib]
+# The `_lib` suffix may seem redundant but it is necessary
+# to make the lib name unique and wouldn't conflict with the bin name.
+# This seems to be only an issue on Windows, see https://github.com/rust-lang/cargo/issues/8519
+name = "draw_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+tauri-plugin-opener = "2"
+tauri-plugin-fs = "2"
+tauri-plugin-dialog = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+# Desktop-only: in-app updater + relaunch.
+# tauri-plugin-updater talks to the configured `endpoints` in tauri.conf.json,
+# verifies signatures with the public key baked into the binary, and downloads
+# + applies updates atomically. tauri-plugin-process gives us `relaunch()`
+# so we can restart the app cleanly after the install.
+[target."cfg(not(any(target_os = \"android\", target_os = \"ios\")))".dependencies]
+tauri-plugin-updater = "2"
+tauri-plugin-process = "2"

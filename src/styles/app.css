@@ -1,0 +1,330 @@
+@import "tailwindcss";
+
+/* ---------- Typography ----------
+ * Instrument Sans (UI) + JetBrains Mono (technical labels) loaded via
+ * <link> in index.html.
+ *
+ * Brutalist pass: monospace is now load-bearing — labels, buttons, kbds,
+ * footers all lean on JetBrains Mono. The sans face stays for body content
+ * and file rows so the tree remains readable at small sizes.
+ */
+
+/* ---------- Theme token plumbing ----------
+ * Tokens map to Tailwind utilities via @theme inline (so `bg-bg`, `text-accent`
+ * etc. re-resolve when the theme class flips). The palette is now a pure
+ * monochrome stack matching the Excalidraw canvas — `#ffffff` in light,
+ * `#121212` in dark — with a single hairline-to-hard-edge border system.
+ */
+@theme inline {
+  --color-bg: var(--bg);
+  --color-bg-elevated: var(--bg-elevated);
+  --color-bg-hover: var(--bg-hover);
+  --color-bg-active: var(--bg-active);
+  --color-bg-active-strong: var(--bg-active-strong);
+  --color-text: var(--text);
+  --color-text-muted: var(--text-muted);
+  --color-text-faint: var(--text-faint);
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+  --color-accent: var(--accent);
+  --color-accent-soft: var(--accent-soft);
+  --color-accent-text: var(--accent-text);
+  --color-danger: var(--danger);
+  --shadow-app: var(--shadow);
+  --shadow-popover: var(--shadow-popover);
+  --font-sans: "Instrument Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-mono: "JetBrains Mono", "SF Mono", Menlo, Consolas, monospace;
+  --animate-fade-in: fade-in 0.12s linear;
+  --animate-pop-in: pop-in 0.12s linear;
+  --animate-rise: rise 0.18s linear both;
+}
+
+/* ---------- Theme token values — BRUTALIST ----------
+ * Light: pure white canvas (#ffffff), pure black ink, no warmth.
+ * Dark : Excalidraw graphite (#121212), pure white ink.
+ *
+ * Borders are FULL-CONTRAST (black on white / white on black) — they are
+ * the structural element of this UI. There are no gradients and shadows
+ * are hard offset blocks (not soft drops).
+ */
+:root,
+.app--theme-light {
+  --bg: #ffffff;
+  --bg-elevated: #ffffff;
+  --bg-hover: #f0f0f0;
+  --bg-active: #000000;
+  --bg-active-strong: #000000;
+  --text: #000000;
+  --text-muted: #555555;
+  --text-faint: #888888;
+  --border: #000000;
+  --border-strong: #000000;
+  --accent: #000000;
+  --accent-soft: #f0f0f0;
+  --accent-text: #ffffff;
+  --danger: #d10000;
+  --shadow: 4px 4px 0 0 #000000;
+  --shadow-popover: 6px 6px 0 0 #000000;
+  --grid-dot: rgba(0, 0, 0, 0.18);
+}
+
+.app--theme-dark {
+  --bg: #121212;
+  --bg-elevated: #121212;
+  --bg-hover: #1f1f1f;
+  --bg-active: #ffffff;
+  --bg-active-strong: #ffffff;
+  --text: #ffffff;
+  --text-muted: #b0b0b0;
+  --text-faint: #777777;
+  --border: #ffffff;
+  --border-strong: #ffffff;
+  --accent: #ffffff;
+  --accent-soft: #1f1f1f;
+  --accent-text: #000000;
+  --danger: #ff5555;
+  --shadow: 4px 4px 0 0 #ffffff;
+  --shadow-popover: 6px 6px 0 0 #ffffff;
+  --grid-dot: rgba(255, 255, 255, 0.18);
+}
+
+/* ---------- Globals ---------- */
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  background: var(--bg);
+}
+
+body {
+  font-family: var(--font-sans);
+  font-size: 13px;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+::selection {
+  background: var(--text);
+  color: var(--bg);
+}
+
+/* ---------- Custom scrollbars — squared, no padding tricks ---------- */
+.scroll-quiet {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-strong) transparent;
+}
+.scroll-quiet::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+.scroll-quiet::-webkit-scrollbar-track {
+  background: transparent;
+}
+.scroll-quiet::-webkit-scrollbar-thumb {
+  background: var(--border-strong);
+  border-radius: 0;
+}
+.scroll-quiet::-webkit-scrollbar-thumb:hover {
+  background: var(--text);
+}
+
+/* ---------- Topbar ----------
+ * 36px tall row above the split. Hosts global controls; reserves 78px on
+ * the left for the macOS traffic-lights (Tauri overlays them on top of the
+ * web view via titleBarStyle: "Overlay").
+ *
+ * BACKGROUND is identical to the canvas (`var(--bg)`) — there's no
+ * separate panel color. A 2px hard rule underneath provides the
+ * structural break.
+ *
+ * DRAG REGION:
+ *   - Tauri intercepts mousedown on any element with `data-tauri-drag-region`
+ *     and calls `start_dragging` over IPC. The header AND each inner flex
+ *     group carry the attribute so empty space between buttons still drags.
+ *   - Buttons opt out via the `data-no-drag` attribute.
+ *   - This requires `core:window:allow-start-dragging` in the capability file
+ *     (see src-tauri/capabilities/default.json) — without it the IPC call is
+ *     silently denied and the window doesn't move.
+ *
+ * The `-webkit-app-region` CSS rules below are an Electron/Chromium feature
+ * that WKWebView ignores. They do nothing here, but are kept harmless as a
+ * cross-engine breadcrumb in case the renderer ever changes.
+ */
+.topbar {
+  height: 36px;
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-left: 78px;
+  padding-right: 4px;
+  background: var(--bg);
+  border-bottom: 2px solid var(--border);
+  -webkit-app-region: drag;
+  app-region: drag;
+  user-select: none;
+}
+.topbar button,
+.topbar [role="button"],
+.topbar input,
+.topbar a,
+.topbar [data-no-drag] {
+  -webkit-app-region: no-drag;
+  app-region: no-drag;
+}
+
+/* ---------- Drafting grid (used on empty state) ---------- */
+.drafting-grid {
+  background-image: radial-gradient(circle, var(--grid-dot) 1px, transparent 1.4px);
+  background-size: 22px 22px;
+  background-position: 0 0;
+}
+
+/* ---------- File-tree active row indicator — a hard 3px black/white block
+ * down the left edge replaces the soft rounded rail. Brutalist hierarchy is
+ * structural, not decorative.
+ */
+.tree-row {
+  position: relative;
+}
+.tree-row[data-active="true"]::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: var(--accent);
+}
+
+/* Indent guide rails for nested folders — sharper, full opacity */
+.tree-row[data-depth]:not([data-depth="0"])::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: calc(8px + (var(--depth) - 1) * 14px + 6px);
+  width: 1px;
+  background: var(--text-faint);
+  opacity: 0.4;
+  pointer-events: none;
+}
+
+/* ---------- Drag-and-drop affordances ----------
+ * The dragged row gets `opacity-40` from JSX. Drop targets get a hard 2px
+ * inset outline in the accent color plus a soft bg shift so they read as a
+ * deliberate "release here" zone — NOT as the active-file selection (which
+ * has its own left rail + full inversion). Outline (with negative offset) is
+ * preferred over a border so we don't reflow the row.
+ */
+.tree-row.drop-target {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+  background: var(--accent-soft) !important;
+}
+
+/* Root drop zone — the file-list scroll container itself. We can't outline
+ * the entire scroll body without it looking aggressive, so the root drop
+ * cue is a thicker dashed inset border that only appears while dragging. */
+.drop-target-root {
+  box-shadow: inset 0 0 0 2px var(--accent);
+}
+
+/* ---------- Excalidraw container ---------- */
+.canvas > .excalidraw {
+  flex: 1;
+}
+
+/* ---------- Buttons: brutalist focus ring (1px solid offset) ---------- */
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+[role="separator"]:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 0;
+}
+
+/* ---------- Sharp utility classes ---------- */
+.brutal-border {
+  border: 2px solid var(--border);
+}
+.brutal-border-b {
+  border-bottom: 2px solid var(--border);
+}
+.brutal-border-t {
+  border-top: 2px solid var(--border);
+}
+.brutal-shadow {
+  box-shadow: var(--shadow);
+}
+.brutal-shadow-pop {
+  box-shadow: var(--shadow-popover);
+}
+
+/* Force-zero radii on app chrome — but EXEMPT Excalidraw's own UI, which
+ * has its own design language we don't want to override. We target each
+ * chrome scope explicitly instead of `.app *`. */
+.app .topbar *,
+.app aside *,
+.app [role="dialog"] *,
+.app [role="dialog"],
+.app aside,
+.app .topbar,
+.app .pulse-line {
+  border-radius: 0 !important;
+}
+
+/* ---------- Keyframes — flat, linear, no easing curves ---------- */
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes pop-in {
+  from {
+    opacity: 0;
+    transform: translateY(2px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes pulse-line {
+  0%, 100% {
+    opacity: 0.25;
+    transform: scaleX(0.6);
+  }
+  50% {
+    opacity: 1;
+    transform: scaleX(1);
+  }
+}
+
+.pulse-line {
+  height: 2px;
+  background: var(--text);
+  transform-origin: center;
+  animation: pulse-line 1.6s linear infinite;
+}

@@ -1,0 +1,39 @@
+{
+  "name": "draw",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "license": "MIT",
+  "homepage": "https://wolves.ink",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/wolvessoftware/draw.git"
+  },
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview",
+    "tauri": "tauri"
+  },
+  "dependencies": {
+    "@excalidraw/excalidraw": "0.18.1",
+    "@tauri-apps/api": "^2",
+    "@tauri-apps/plugin-dialog": "^2",
+    "@tauri-apps/plugin-fs": "^2",
+    "@tauri-apps/plugin-opener": "^2",
+    "@tauri-apps/plugin-process": "^2",
+    "@tauri-apps/plugin-updater": "^2",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.2.4",
+    "@tauri-apps/cli": "^2",
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "@vitejs/plugin-react": "^4.6.0",
+    "tailwindcss": "^4.2.4",
+    "typescript": "~5.8.3",
+    "vite": "^7.0.4"
+  }
+}

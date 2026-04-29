@@ -1,0 +1,168 @@
+# =============================================================================
+# release.yml — build and publish a signed, notarized macOS .dmg + updater
+#               manifest to a GitHub Release.
+# =============================================================================
+#
+# TRIGGERS
+#   - push to a tag matching `v*.*.*` (e.g. v0.2.0)        → publish release
+#   - workflow_dispatch (manual run from the Actions tab)  → publish draft
+#
+# WHAT IT BUILDS
+#   - draw_<version>_universal.dmg           (Apple Silicon + Intel fat binary)
+#   - draw.app.tar.gz + draw.app.tar.gz.sig  (updater payload + signature)
+#   - latest.json                            (updater manifest consumed by the
+#                                             in-app `tauri-plugin-updater`)
+#
+# DISTRIBUTION URLS (set up by GitHub automatically)
+#   - direct dmg : https://github.com/wolvessoftware/draw/releases/latest/download/draw_<version>_universal.dmg
+#                  (note: <version> changes per release; use the URL below for a stable link)
+#   - latest dmg : https://github.com/wolvessoftware/draw/releases/latest/download/draw.dmg
+#                  (we upload an aliased copy named exactly draw.dmg so the
+#                   marketing site can hard-code one URL forever)
+#   - manifest   : https://github.com/wolvessoftware/draw/releases/latest/download/latest.json
+#
+# REQUIRED REPO SECRETS  (Settings → Secrets and variables → Actions)
+#   Apple code-signing + notarization:
+#     APPLE_CERTIFICATE              base64 of your Developer ID .p12
+#     APPLE_CERTIFICATE_PASSWORD     password for that .p12
+#     APPLE_SIGNING_IDENTITY         "Developer ID Application: <Name> (TEAMID)"
+#     APPLE_ID                       your Apple ID email
+#     APPLE_PASSWORD                 app-specific password (appleid.apple.com → Sign-In and Security → App-Specific Passwords)
+#     APPLE_TEAM_ID                  10-character team id
+#
+#   Tauri updater signing (separate from Apple, signs the .tar.gz):
+#     TAURI_SIGNING_PRIVATE_KEY      contents of .secrets/updater.key
+#     TAURI_SIGNING_PRIVATE_KEY_PASSWORD   blank if generated without password
+#
+#   GITHUB_TOKEN is provided automatically; no setup needed.
+# =============================================================================
+
+name: release
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+  workflow_dispatch:
+
+# Cancel in-flight runs on the same ref so a quick re-tag doesn't queue duplicates.
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+# Only publishing-the-release needs `contents: write`. Everything else stays read.
+permissions:
+  contents: write
+
+jobs:
+  build-macos:
+    name: Build macOS (universal)
+    runs-on: macos-latest
+    timeout-minutes: 45
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Setup pnpm 10
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+          run_install: false
+
+      - name: Resolve pnpm store path
+        id: pnpm-store
+        run: echo "path=$(pnpm store path --silent)" >> "$GITHUB_OUTPUT"
+
+      - name: Cache pnpm store
+        uses: actions/cache@v4
+        with:
+          path: ${{ steps.pnpm-store.outputs.path }}
+          key: ${{ runner.os }}-pnpm-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: ${{ runner.os }}-pnpm-
+
+      - name: Install JS dependencies
+        run: pnpm install --frozen-lockfile
+
+      # We build a single universal-apple-darwin binary that runs natively on
+      # both Apple Silicon and Intel. Rust toolchain needs both target stdlibs.
+      - name: Setup Rust (universal apple-darwin targets)
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-darwin,x86_64-apple-darwin
+
+      - name: Cache cargo registry + target
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            src-tauri/target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('src-tauri/Cargo.lock') }}
+          restore-keys: ${{ runner.os }}-cargo-
+
+      # tauri-action does the heavy lifting: bundles the app, signs with the
+      # Apple cert, notarizes via the App Store Connect / Apple ID flow,
+      # signs the updater payload with the minisign key, and then uploads
+      # everything to a GitHub Release (creating it if necessary).
+      #
+      # We pass `--target universal-apple-darwin` so the resulting .dmg works
+      # on both architectures from one download.
+      - name: Build, sign, notarize, and publish
+        uses: tauri-apps/tauri-action@v0
+        env:
+          # Apple code-signing (.app + .dmg)
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          # Apple notarization (legacy Apple-ID method; switch to API key
+          # secrets if you'd rather use App Store Connect API keys).
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          # Tauri updater payload signing (separate from Apple).
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+          # GH token used to push assets to the release.
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          # Tag/release naming. __VERSION__ is replaced by the version in
+          # tauri.conf.json so we don't have to keep these in sync by hand.
+          tagName: v__VERSION__
+          releaseName: "draw v__VERSION__"
+          releaseBody: |
+            Download `draw.dmg` below.
+
+            **First launch on a clean Mac:** the app is signed and notarized,
+            so it should open without warnings. If macOS still complains
+            (e.g. because the file was downloaded via a non-browser tool),
+            right-click the app → Open → Open.
+
+            Existing users: the in-app updater will offer this version on
+            the next launch.
+          releaseDraft: ${{ github.event_name == 'workflow_dispatch' }}
+          prerelease: false
+          includeUpdaterJson: true
+          args: --target universal-apple-darwin
+
+      # The asset filename baked by Tauri includes the version — fine for
+      # archives but unhelpful for "always link to the latest" buttons on a
+      # marketing site. We re-upload the .dmg under the stable filename
+      # `draw.dmg` so https://.../releases/latest/download/draw.dmg works
+      # forever without ever changing the URL.
+      - name: Upload stable-named alias (draw.dmg)
+        if: startsWith(github.ref, 'refs/tags/')
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          TAG="${GITHUB_REF##*/}"
+          DMG=$(ls src-tauri/target/universal-apple-darwin/release/bundle/dmg/*.dmg | head -n 1)
+          echo "Found dmg: $DMG"
+          cp "$DMG" "draw.dmg"
+          gh release upload "$TAG" "draw.dmg" --clobber

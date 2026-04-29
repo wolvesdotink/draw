@@ -7,7 +7,7 @@
   "homepage": "https://wolves.ink",
   "repository": {
     "type": "git",
-    "url": "https://github.com/wolvessoftware/draw.git"
+    "url": "https://github.com/wolvesdotink/draw.git"
   },
   "scripts": {
     "dev": "vite",

@@ -1,10 +1,66 @@
 # draw
 
-Local-first Excalidraw desktop app. Drawings live as plain `.excalidraw`
-files in `~/Library/Application Support/ink.wolves.draw/drawings/`,
-autosaved continuously, with full offline support.
+**A quiet, local-first sketchpad for the desktop.**
 
-Built with Tauri 2 + React 18 + Vite.
+Open the app, draw a thing, close the app. That's the whole loop. No
+account, no cloud, no sync spinner — every drawing is just a plain
+`.excalidraw` file on your own disk. Autosaved every keystroke. Works
+on a plane.
+
+Built on the Excalidraw canvas you already know, wrapped in a native
+macOS shell that gets out of the way.
+
+---
+
+## Features
+
+- **Local files, real files.** Drawings live in
+  `~/Library/Application Support/ink.wolves.draw/drawings/` as plain
+  `.excalidraw` JSON. Open them in any Excalidraw client, commit them
+  to git, grep them, back them up — they're yours.
+- **Continuous autosave with crash recovery.** Every change is flushed
+  to disk via atomic `.tmp` → rename. Stale temp files are swept on
+  launch. Pull the plug mid-stroke; the file is fine.
+- **Offline-first.** No network calls, no telemetry, no login. The
+  app does the same thing on a train as it does on a desk.
+- **Sidebar file tree.** Folders, nested folders, drag-and-drop to
+  reorganize, in-place rename, delete. Resizable, collapsible, and it
+  remembers what you had open.
+- **Drop to import.** Drag a `.excalidraw` file from Finder onto the
+  window — the import flow asks where to put it and detects overwrites.
+- **Light & dark.** A single toggle in the topbar. Pure white or pure
+  graphite — the canvas matches.
+- **Keyboard-first.** `⌘N` new drawing · `⌘⇧N` new folder · `⌘I` import
+  · `⌘S` force-save · `⌘⌫` delete · `⌘\` toggle sidebar.
+- **Silent auto-update.** Checks for new releases a few seconds after
+  launch, signed with the Tauri minisign key. The user always confirms
+  the restart — your in-flight canvas is never yanked out from under you.
+- **Universal macOS binary.** One signed, notarized `.dmg` runs natively
+  on Apple Silicon and Intel.
+
+---
+
+## Design
+
+Brutalist, on purpose.
+
+- Pure black on pure white (or pure white on graphite, in dark mode).
+  No gradients. No frosted glass. No animated mascots.
+- Hard 4px offset shadows — the kind printed posters cast — instead of
+  soft drop shadows. Everything reads as a placed object.
+- Hairline borders at full contrast: black-on-white, white-on-black.
+  Borders are structural, not decorative.
+- Typography is two faces, doing different jobs. **JetBrains Mono** in
+  small caps with wide tracking carries every label, button, kbd hint
+  and the active-file title in the topbar — load-bearing monospace.
+  **Instrument Sans** keeps the file tree and body content readable.
+- Native macOS chrome: traffic lights overlay a single unified topbar
+  that doubles as the window drag region. The title in the middle is
+  the file you're currently editing.
+- An empty canvas shows a faint drafting-dot grid and nothing else.
+
+The whole thing is meant to feel like a clean drafting table, not a SaaS
+dashboard.
 
 ---
 
@@ -93,9 +149,9 @@ release:
 
 | What | URL |
 |---|---|
-| **Direct DMG download** (use this on your "Download" button) | `https://github.com/wolvessoftware/draw/releases/latest/download/draw.dmg` |
-| Updater manifest (the in-app updater hits this) | `https://github.com/wolvessoftware/draw/releases/latest/download/latest.json` |
-| Release page (changelog, all assets) | `https://github.com/wolvessoftware/draw/releases/latest` |
+| **Direct DMG download** (use this on your "Download" button) | `https://github.com/wolvesdotink/draw/releases/latest/download/draw.dmg` |
+| Updater manifest (the in-app updater hits this) | `https://github.com/wolvesdotink/draw/releases/latest/download/latest.json` |
+| Release page (changelog, all assets) | `https://github.com/wolvesdotink/draw/releases/latest` |
 
 GitHub auto-redirects `releases/latest/download/<filename>` to the asset
 of that name in the most recent non-prerelease.
@@ -103,7 +159,7 @@ of that name in the most recent non-prerelease.
 Example download button HTML for the website:
 
 ```html
-<a href="https://github.com/wolvessoftware/draw/releases/latest/download/draw.dmg" download>
+<a href="https://github.com/wolvesdotink/draw/releases/latest/download/draw.dmg" download>
   Download for macOS
 </a>
 ```

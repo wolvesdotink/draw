@@ -14,12 +14,12 @@
 #                                             in-app `tauri-plugin-updater`)
 #
 # DISTRIBUTION URLS (set up by GitHub automatically)
-#   - direct dmg : https://github.com/wolvessoftware/draw/releases/latest/download/draw_<version>_universal.dmg
+#   - direct dmg : https://github.com/wolvesdotink/draw/releases/latest/download/draw_<version>_universal.dmg
 #                  (note: <version> changes per release; use the URL below for a stable link)
-#   - latest dmg : https://github.com/wolvessoftware/draw/releases/latest/download/draw.dmg
+#   - latest dmg : https://github.com/wolvesdotink/draw/releases/latest/download/draw.dmg
 #                  (we upload an aliased copy named exactly draw.dmg so the
 #                   marketing site can hard-code one URL forever)
-#   - manifest   : https://github.com/wolvessoftware/draw/releases/latest/download/latest.json
+#   - manifest   : https://github.com/wolvesdotink/draw/releases/latest/download/latest.json
 #
 # REQUIRED REPO SECRETS  (Settings → Secrets and variables → Actions)
 #   Apple code-signing + notarization:

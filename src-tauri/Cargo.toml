@@ -6,7 +6,7 @@ authors = ["Wolves <https://wolves.ink>"]
 edition = "2021"
 license = "MIT"
 homepage = "https://wolves.ink"
-repository = "https://github.com/wolvessoftware/draw"
+repository = "https://github.com/wolvesdotink/draw"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 

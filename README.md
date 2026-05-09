@@ -327,3 +327,17 @@ brew install librsvg
 - [VS Code](https://code.visualstudio.com/)
 - [Tauri](https://marketplace.visualstudio.com/items?itemName=tauri-apps.tauri-vscode)
 - [rust-analyzer](https://marketplace.visualstudio.com/items?itemName=rust-lang.rust-analyzer)
+
+---
+
+## Credits
+
+`draw` stands entirely on the shoulders of [**Excalidraw**](https://excalidraw.com)
+and the team behind it. The canvas, the hand-drawn aesthetic, the
+`.excalidraw` file format, the editing model — all of it is their work.
+This app is a thin native shell around their open-source editor, and it
+exists only because they built and freely shared something extraordinary.
+
+Huge thanks to the Excalidraw maintainers and contributors for years of
+patient, high-quality, MIT-licensed work. If you like what `draw` does,
+go support them: [github.com/excalidraw/excalidraw](https://github.com/excalidraw/excalidraw).

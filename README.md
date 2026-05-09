@@ -302,17 +302,36 @@ Implementation:
 
 ## App icon
 
-Designed in SVG — see [`src-tauri/icons/icon.svg`](./src-tauri/icons/icon.svg).
+Two SVG sources, split by whether the target OS applies its own mask:
 
-To regenerate all platform icon sizes from the SVG (after editing it):
+- [`src-tauri/icons/icon-ios.svg`](./src-tauri/icons/icon-ios.svg) — **iOS** and **macOS Tahoe (26+)**. Full-bleed black square. iOS and modern macOS apply a continuous-curve Liquid Glass mask; a squircle source would double-mask and leak the glass background through the SVG's transparent corners as a grey border.
+- [`src-tauri/icons/icon.svg`](./src-tauri/icons/icon.svg) — **Windows** and **Linux** (and historical pre-Tahoe macOS). Big Sur squircle with transparent corners. These platforms don't mask, so the squircle IS the icon shape.
+
+To regenerate the **macOS** app icon (`.icns` + dock/window PNGs) from `icon-ios.svg`:
+
+```bash
+bash src-tauri/icons/generate-mac-icons.sh
+```
+
+To regenerate the **iOS** app icon PNGs from `icon-ios.svg`:
+
+```bash
+bash src-tauri/icons/generate-ios-icons.sh
+```
+
+This rasterises every size declared in the iOS appiconset `Contents.json`
+into both `src-tauri/icons/ios/` and `src-tauri/gen/apple/Assets.xcassets/AppIcon.appiconset/`.
+
+To regenerate the **Windows / Linux** icon sizes from `icon.svg`:
 
 ```bash
 rsvg-convert -w 1024 -h 1024 src-tauri/icons/icon.svg -o src-tauri/icons/icon-source.png
 pnpm tauri icon src-tauri/icons/icon-source.png
 ```
 
-This produces `.icns` (macOS), `.ico` (Windows), and all the PNG sizes
-declared in `bundle.icon` in `tauri.conf.json`. Commit them all.
+Note: `pnpm tauri icon` would also overwrite `icon.icns` and the dock PNGs
+with the squircle shape — re-run `generate-mac-icons.sh` afterward to
+restore the full-bleed Mac variant. Commit all generated files.
 
 If you don't have `rsvg-convert`:
 

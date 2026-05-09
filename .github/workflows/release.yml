@@ -134,6 +134,94 @@ jobs:
         with:
           args: --target universal-apple-darwin
 
+      # tauri-action gives the DMG a generic Finder icon. Re-author the DMG
+      # with a custom volume icon (.VolumeIcon.icns + the 'C' Finder flag),
+      # then re-codesign and re-notarize. Tauri v2 has no config knob for
+      # this yet — see tauri-apps/tauri#9253.
+      #
+      # Pipeline (each stage fails the workflow if it errors):
+      #   convert UDZO → UDRW (writable)
+      #   mount, install icon, set 'C' attribute, detach
+      #   convert UDRW → UDZO (Finder reads the icon from the compressed image)
+      #   codesign --force (the previous Apple signature is now invalid)
+      #   notarytool submit --wait + stapler staple
+      - name: Add custom DMG volume icon (re-sign + re-notarize)
+        env:
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          set -euo pipefail
+
+          VERSION=$(node -p "require('./src-tauri/tauri.conf.json').version")
+          BUNDLE_DMG_DIR="src-tauri/target/universal-apple-darwin/release/bundle/dmg"
+          DMG="${BUNDLE_DMG_DIR}/draw_${VERSION}_universal.dmg"
+          ICON="src-tauri/icons/icon.icns"
+          MOUNT="/Volumes/draw-iconize-$$-${RANDOM}"
+          RW_DMG="${BUNDLE_DMG_DIR}/draw_${VERSION}_universal.rw.dmg"
+
+          test -f "$DMG"  || { echo "::error::source dmg not found: $DMG"; exit 1; }
+          test -f "$ICON" || { echo "::error::icon not found: $ICON"; exit 1; }
+
+          cleanup() {
+            if mount | grep -q " on ${MOUNT} "; then
+              hdiutil detach "$MOUNT" -force >/dev/null 2>&1 || true
+            fi
+            rm -f "$RW_DMG"
+          }
+          trap cleanup EXIT
+
+          echo "::group::Convert UDZO → UDRW"
+          hdiutil convert "$DMG" -format UDRW -o "$RW_DMG" -ov
+          echo "::endgroup::"
+
+          echo "::group::Mount writable image"
+          hdiutil attach "$RW_DMG" \
+            -mountpoint "$MOUNT" \
+            -nobrowse -noverify -noautoopen
+          echo "::endgroup::"
+
+          echo "::group::Install volume icon"
+          cp "$ICON" "${MOUNT}/.VolumeIcon.icns"
+          # 'C' = HasCustomIcon. Without this flag, Finder ignores the icns.
+          SetFile -a C "$MOUNT"
+          touch "$MOUNT" || true
+          echo "::endgroup::"
+
+          echo "::group::Detach writable image"
+          # sync flushes the icon write before detach to avoid a race where
+          # the file lands after the volume is gone.
+          sync
+          hdiutil detach "$MOUNT" -force
+          echo "::endgroup::"
+
+          echo "::group::Convert UDRW → UDZO (replace original)"
+          hdiutil convert "$RW_DMG" -format UDZO -imagekey zlib-level=9 -o "$DMG" -ov
+          echo "::endgroup::"
+
+          echo "::group::Re-codesign DMG"
+          # --force replaces the signature invalidated by the byte change.
+          # --timestamp is required for notarization.
+          codesign --force --sign "$APPLE_SIGNING_IDENTITY" --timestamp "$DMG"
+          codesign --verify --verbose=2 "$DMG"
+          echo "::endgroup::"
+
+          echo "::group::Notarize (synchronous)"
+          xcrun notarytool submit "$DMG" \
+            --apple-id "$APPLE_ID" \
+            --password "$APPLE_PASSWORD" \
+            --team-id "$APPLE_TEAM_ID" \
+            --wait
+          echo "::endgroup::"
+
+          echo "::group::Staple notarization ticket"
+          xcrun stapler staple "$DMG"
+          xcrun stapler validate "$DMG"
+          echo "::endgroup::"
+
+          echo "::notice::DMG volume icon installed and re-notarized: $DMG"
+
       # Stage every release asset under dist/ so the publish step has one
       # place to look. Also generates latest.json (the updater manifest)
       # since we are no longer using tauri-action's publish flow.

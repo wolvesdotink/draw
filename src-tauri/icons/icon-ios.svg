@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  draw app icon — full-bleed variant for systems that mask icons.
+
+  Same mark as icon.svg, but a solid black square instead of a squircle.
+  iOS and macOS Tahoe (26+) apply their own continuous-curve mask to app
+  icons; supplying a squircle source produces a double-mask effect where
+  the system's mask shows glass / wallpaper through the SVG's transparent
+  corners, appearing as a grey border around a smaller squircle.
+  A full-bleed square lets the system's mask define the shape cleanly.
+
+  Used by:
+    - generate-ios-icons.sh → iOS appiconset PNGs
+    - generate-mac-icons.sh → icon.icns + macOS dock/window PNGs
+
+  See icon.svg for the legacy squircle master (still drives Windows .ico
+  and the Square*Logo.png tile assets via `pnpm tauri icon`).
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024" shape-rendering="geometricPrecision">
+  <rect width="1024" height="1024" fill="#000000"/>
+  <g transform="translate(512 512) rotate(45)">
+    <path d="M -320 -75 L 120 -75 L 290 0 L 120 75 L -320 75 Z" fill="#FFFFFF"/>
+    <rect x="-240" y="-7" width="440" height="14" fill="#000000"/>
+    <path d="M -320 -75 L -260 -30 L -260 30 L -320 75 Z" fill="#000000"/>
+    <circle cx="285" cy="0" r="9" fill="#000000"/>
+  </g>
+  <rect x="722" y="688" width="220" height="60" fill="#FFFFFF"/>
+</svg>

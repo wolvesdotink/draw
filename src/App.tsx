@@ -195,6 +195,35 @@ function App() {
     };
   }, []);
 
+  // Menu-driven update check. The macOS app menu's "Check for Updates…" item
+  // emits this event from Rust (see src-tauri/src/lib.rs); we just relay it
+  // into the existing useUpdater state machine. Lazy import + try/catch so
+  // the browser-only Vite build (no Tauri runtime) doesn't blow up on the
+  // event API import — same pattern used inside useUpdater.ts.
+  useEffect(() => {
+    let unlisten: (() => void) | null = null;
+    let cancelled = false;
+    (async () => {
+      try {
+        const { listen } = await import("@tauri-apps/api/event");
+        const off = await listen("menu://check-for-updates", () => {
+          void updater.checkNow();
+        });
+        if (cancelled) {
+          off();
+          return;
+        }
+        unlisten = off;
+      } catch {
+        // Non-Tauri environment — nothing to wire up.
+      }
+    })();
+    return () => {
+      cancelled = true;
+      if (unlisten) unlisten();
+    };
+  }, [updater.checkNow]);
+
   // ---------- File switching ----------
   const handleSelectFile = useCallback(
     async (rel: string) => {

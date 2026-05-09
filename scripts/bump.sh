@@ -41,8 +41,11 @@ node -e "
   fs.writeFileSync('package.json', JSON.stringify(p, null, 2) + '\n');
 "
 
-# src-tauri/Cargo.toml — only the first occurrence (the package version)
-sed -i '' "0,/^version = \"$CURRENT\"/{s/^version = \"$CURRENT\"/version = \"$NEW\"/}" src-tauri/Cargo.toml
+# src-tauri/Cargo.toml — only the first occurrence (the [package] version)
+awk -v cur="$CURRENT" -v new="$NEW" '
+  !done && $0 == "version = \"" cur "\"" { print "version = \"" new "\""; done=1; next }
+  { print }
+' src-tauri/Cargo.toml > src-tauri/Cargo.toml.tmp && mv src-tauri/Cargo.toml.tmp src-tauri/Cargo.toml
 
 # src-tauri/tauri.conf.json
 node -e "

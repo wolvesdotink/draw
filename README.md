@@ -10,6 +10,9 @@ on a plane.
 Built on the Excalidraw canvas you already know, wrapped in a native
 macOS shell that gets out of the way.
 
+**Project site:** [wolves.ink/projects/draw](https://wolves.ink/projects/draw) ·
+**Studio:** [wolves.ink](https://wolves.ink)
+
 ---
 
 ## Features

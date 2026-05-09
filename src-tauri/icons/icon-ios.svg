@@ -9,12 +9,14 @@
   corners, appearing as a grey border around a smaller squircle.
   A full-bleed square lets the system's mask define the shape cleanly.
 
-  Used by:
-    - generate-ios-icons.sh → iOS appiconset PNGs
-    - generate-mac-icons.sh → icon.icns + macOS dock/window PNGs
+  Used by generate-icons.sh as the source for:
+    - macOS bundle PNGs (32x32, 128x128, 128x128@2x), icon.icns, icon.png
+    - iOS appiconset PNGs (ios/AppIcon-*.png + Contents.json)
 
-  See icon.svg for the legacy squircle master (still drives Windows .ico
-  and the Square*Logo.png tile assets via `pnpm tauri icon`).
+  The squircle master at icon.svg still drives the Windows .ico and the
+  Square*Logo.png / StoreLogo.png tile assets, plus android/**. Both
+  sources are passed through `pnpm tauri icon` (see generate-icons.sh)
+  so the outputs are RGBA where Tauri requires it.
 -->
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024" shape-rendering="geometricPrecision">
   <rect width="1024" height="1024" fill="#000000"/>

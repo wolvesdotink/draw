@@ -13,7 +13,10 @@
     "dev": "vite",
     "build": "tsc && vite build",
     "preview": "vite preview",
-    "tauri": "tauri"
+    "tauri": "tauri",
+    "bump:patch": "bash scripts/bump.sh patch",
+    "bump:minor": "bash scripts/bump.sh minor",
+    "bump:major": "bash scripts/bump.sh major"
   },
   "dependencies": {
     "@excalidraw/excalidraw": "0.18.1",

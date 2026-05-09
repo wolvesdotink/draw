@@ -65,6 +65,8 @@ import {
   type Theme,
 } from "./lib/state";
 import { DRAWINGS_DIR, basename, stripExt, toAppDataPath } from "./lib/paths";
+import { useViewport } from "./lib/platform";
+import { useDialog } from "./hooks/useDialog";
 import "./styles/app.css";
 
 type BootStatus = "loading" | "ready" | "error";
@@ -102,6 +104,23 @@ function App() {
   const [newFolderDialogOpen, setNewFolderDialogOpen] = useState(false);
   /** Live sidebar width while resizing (separate from persisted, to avoid debounced churn). */
   const [liveSidebarWidth, setLiveSidebarWidth] = useState<number | null>(null);
+  /**
+   * Compact-viewport drawer open state. NOT persisted.
+   *
+   * On compact (iPhone / iPad Slide Over / half-screen Split View) the sidebar
+   * is an overlay drawer over the canvas, defaulting to closed. We keep this
+   * state separate from `persistedState.sidebarCollapsed` so toggling the
+   * drawer on a phone doesn't clobber the user's desktop column-width
+   * preference. On wide viewports this state is unused.
+   */
+  const [compactDrawerOpen, setCompactDrawerOpen] = useState(false);
+
+  // Live viewport zone (compact / regular / wide). Drives sidebar drawer
+  // mode on compact (iPhone, iPad Slide Over, half-screen Split View).
+  const viewport = useViewport();
+  // Imperative confirm/alert API — replaces window.confirm / window.alert.
+  // Mounts brutalist-styled dialogs via DialogProvider in main.tsx.
+  const dialog = useDialog();
 
   const fileTree = useFileTree();
   const activeFile = useActiveFile();
@@ -186,11 +205,17 @@ function App() {
         await activeFile.open(rel);
         autoSave.setActivePath(rel);
         updatePersistedState({ lastOpenedPath: rel });
+        // On compact viewports, auto-close the drawer after picking a file
+        // so the canvas is fully visible. Wide viewports keep the column open.
+        if (viewport.isCompact) setCompactDrawerOpen(false);
       } catch (e) {
-        window.alert(`Couldn't open file: ${(e as Error).message}`);
+        void dialog.alert({
+          title: "Couldn't open file",
+          body: (e as Error).message,
+        });
       }
     },
-    [activeFile, autoSave, updatePersistedState],
+    [activeFile, autoSave, updatePersistedState, viewport.isCompact, dialog],
   );
 
   const handleActiveFileRemoved = useCallback(async () => {
@@ -210,10 +235,13 @@ function App() {
         autoSave.setActivePath(null);
         activeFile.close();
         updatePersistedState({ lastOpenedPath: null });
-        window.alert(`After rename, couldn't reopen: ${(e as Error).message}`);
+        void dialog.alert({
+          title: "Couldn't reopen after rename",
+          body: (e as Error).message,
+        });
       }
     },
-    [activeFile, autoSave, updatePersistedState],
+    [activeFile, autoSave, updatePersistedState, dialog],
   );
 
   // After deletion / rename, ensure the active file still exists in the new tree.
@@ -262,10 +290,13 @@ function App() {
         autoSave.setActivePath(rel);
         updatePersistedState({ lastOpenedPath: rel });
       } catch (e) {
-        window.alert(`Couldn't open imported file: ${(e as Error).message}`);
+        void dialog.alert({
+          title: "Couldn't open imported file",
+          body: (e as Error).message,
+        });
       }
     },
-    [activeFile, autoSave, updatePersistedState],
+    [activeFile, autoSave, updatePersistedState, dialog],
   );
 
   const existsRel = useCallback(
@@ -318,18 +349,28 @@ function App() {
   );
 
   // ---------- Sidebar collapse ----------
+  // Compact viewports drive the local drawer state; wide viewports persist
+  // the column collapse across launches.
   const handleToggleSidebar = useCallback(() => {
+    if (viewport.isCompact) {
+      setCompactDrawerOpen((prev) => !prev);
+      return;
+    }
     const collapsed = persistedStateRef.current?.sidebarCollapsed ?? false;
     updatePersistedState({ sidebarCollapsed: !collapsed });
-  }, [updatePersistedState]);
+  }, [viewport.isCompact, updatePersistedState]);
 
   // ---------- Delete active ----------
   const handleDeleteActive = useCallback(async () => {
     const active = activeFileRef.current;
     if (!active) return;
-    const confirmed = window.confirm(
-      `Delete drawing "${active.path}"? This can't be undone.`,
-    );
+    const confirmed = await dialog.confirm({
+      title: "Delete drawing",
+      subtitle: active.path,
+      body: "This can't be undone.",
+      okLabel: "DELETE",
+      destructive: true,
+    });
     if (!confirmed) return;
     try {
       await autoSave.flushPending().catch(() => {});
@@ -339,9 +380,12 @@ function App() {
       updatePersistedState({ lastOpenedPath: null });
       await fileTree.remove(path, false);
     } catch (e) {
-      window.alert(`Couldn't delete: ${(e as Error).message}`);
+      void dialog.alert({
+        title: "Couldn't delete",
+        body: (e as Error).message,
+      });
     }
-  }, [activeFile, autoSave, fileTree, updatePersistedState]);
+  }, [activeFile, autoSave, fileTree, updatePersistedState, dialog]);
 
   // ---------- Keyboard shortcuts ----------
   useEffect(() => {
@@ -411,7 +455,7 @@ function App() {
   // ---------- Render ----------
   if (bootStatus === "loading") {
     return (
-      <div className="app app--theme-light flex flex-col h-screen w-screen bg-bg text-text">
+      <div className="app app--theme-light app-shell">
         <div data-tauri-drag-region className="topbar" />
         <div className="flex-1 flex flex-col items-center justify-center p-6 text-center">
           <div className="w-[120px] pulse-line" aria-hidden />
@@ -421,7 +465,7 @@ function App() {
   }
   if (bootStatus === "error") {
     return (
-      <div className="app app--theme-light flex flex-col h-screen w-screen bg-bg text-text">
+      <div className="app app--theme-light app-shell">
         <div data-tauri-drag-region className="topbar" />
         <div className="flex-1 flex flex-col items-center justify-center p-8 text-center">
           <p className="text-[10px] uppercase tracking-[0.32em] font-mono text-danger mb-4">
@@ -444,7 +488,11 @@ function App() {
   const theme: Theme = persistedState?.theme ?? "light";
   const persistedWidth = persistedState?.sidebarWidth ?? 260;
   const sidebarWidth = liveSidebarWidth ?? persistedWidth;
-  const sidebarCollapsed = persistedState?.sidebarCollapsed ?? false;
+  // On compact viewports the sidebar is an overlay drawer (Phase 6) driven
+  // by a non-persisted local flag. On wide viewports it's a column whose
+  // collapse state is persisted across launches.
+  const persistedCollapsed = persistedState?.sidebarCollapsed ?? false;
+  const sidebarCollapsed = viewport.isCompact ? !compactDrawerOpen : persistedCollapsed;
 
   const hasFiles = fileTree.tree.length > 0;
 
@@ -453,7 +501,7 @@ function App() {
     "w-7 h-7 inline-flex items-center justify-center bg-transparent border-0 text-text-muted leading-none hover:bg-bg-hover hover:text-text active:bg-text active:text-bg cursor-pointer";
 
   return (
-    <div className={`app app--theme-${theme} flex flex-col h-screen w-screen bg-bg text-text`}>
+    <div className={`app app--theme-${theme} app-shell`}>
       {/* Unified topbar.
        *
        *   - The <header> itself is the drag region (data-tauri-drag-region +
@@ -568,7 +616,10 @@ function App() {
       </header>
 
       <div className="flex flex-1 overflow-hidden">
-        {!sidebarCollapsed && (
+        {/* Wide/regular viewport: sidebar lives as a column with a draggable
+         * resizer between it and the canvas. The drawer overlay below
+         * handles the compact case. */}
+        {!viewport.isCompact && !sidebarCollapsed && (
           <>
             <div
               className="flex-none flex flex-col min-w-[180px] max-w-[600px] overflow-hidden bg-bg border-r-2 border-border"
@@ -612,6 +663,38 @@ function App() {
           )}
         </main>
       </div>
+
+      {/* Compact viewport: sidebar overlays the canvas as a slide-in drawer.
+       * Always rendered so the close animation can play. The CSS controls
+       * visibility/pointer-events via the `data-open` attribute. Tap on the
+       * scrim (the drawer container itself, not the panel) closes it. */}
+      {viewport.isCompact && (
+        <div
+          className="sidebar-drawer"
+          data-open={!sidebarCollapsed ? "true" : "false"}
+          onClick={(e) => {
+            if (e.target === e.currentTarget) handleToggleSidebar();
+          }}
+          aria-hidden={sidebarCollapsed}
+        >
+          <div
+            className="sidebar-drawer-panel"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <Sidebar
+              fileTree={fileTree}
+              activePath={activeFile.active?.path ?? null}
+              onSelectFile={handleSelectFile}
+              onActiveFileRemoved={handleActiveFileRemoved}
+              onActiveFileMoved={handleActiveFileMoved}
+              initialExpanded={persistedState?.expandedFolders ?? {}}
+              onExpandedChange={(expandedFolders) =>
+                updatePersistedState({ expandedFolders })
+              }
+            />
+          </div>
+        </div>
+      )}
 
       {newDrawingDialogOpen && (
         <NewItemDialog

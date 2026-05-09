@@ -37,6 +37,9 @@ macOS shell that gets out of the way.
   the restart — your in-flight canvas is never yanked out from under you.
 - **Universal macOS binary.** One signed, notarized `.dmg` runs natively
   on Apple Silicon and Intel.
+- **Native iPad app.** Same `.excalidraw` files, same brutalist UI,
+  re-flowed for touch. Apple Pencil works (pressure-aware strokes,
+  palm rejection). Slide Over and Split View supported on iPad.
 
 ---
 
@@ -79,6 +82,112 @@ pnpm dev    # runs vite at http://localhost:1420
 
 Note that filesystem features (autosave, file tree, import) only work in
 the Tauri shell — the browser-only path will throw on those calls.
+
+---
+
+## iOS / iPad development
+
+`draw` ships as a universal macOS app **and** a native iPad app, sharing
+the same React frontend and the same Rust backend. iPad is the primary
+mobile target; iPhone is hidden by default (`TARGETED_DEVICE_FAMILY = 2`).
+
+### Prerequisites
+
+- **Xcode 15+** with the iOS SDK and a working `xcrun` toolchain.
+  Verify with `xcrun --version`.
+- **An Apple ID** signed in to Xcode → Settings → Accounts. The free
+  personal team is enough for Simulator and tethered-device dev (with a
+  7-day provisioning rotation). A paid Apple Developer Program account
+  ($99/yr) is only required for TestFlight / App Store submission.
+- **iOS Rust targets** installed:
+  ```bash
+  rustup target add aarch64-apple-ios aarch64-apple-ios-sim x86_64-apple-ios
+  ```
+- **`libimobiledevice`** (for tethered iPad builds — `pnpm tauri ios init`
+  installs it via Homebrew automatically the first time).
+
+### First-time setup
+
+```bash
+pnpm tauri ios init
+```
+
+This generates `src-tauri/gen/apple/` (the Xcode project, committed to
+git) and writes the iPad-specific Info.plist + project settings. Open the
+project once in Xcode to set the Team / signing identity:
+
+```bash
+open src-tauri/gen/apple/draw.xcodeproj
+```
+
+### Dev loop
+
+Simulator (default: latest iPad Pro):
+
+```bash
+pnpm tauri ios dev
+```
+
+Tethered iPad over Wi-Fi (the iPad and your Mac must be on the same
+network; Xcode must trust the device):
+
+```bash
+pnpm tauri ios dev --host
+```
+
+The Vite dev server auto-reloads on JS/CSS edits; Rust changes trigger a
+Cargo rebuild as part of the Xcode build phase. The macOS desktop dev
+loop (`pnpm tauri dev`) is unaffected — you can have both running side
+by side.
+
+### Building an `.ipa`
+
+```bash
+pnpm tauri ios build
+```
+
+Produces an `.ipa` under `src-tauri/gen/apple/build/`. For TestFlight
+distribution, archive in Xcode (Product → Archive) and use the Organizer
+to upload to App Store Connect. Apple's first-build review for a new
+TestFlight app is 1–4 business days — plan accordingly.
+
+### Configuration overview
+
+- **Info.plist:** [`src-tauri/gen/apple/draw_iOS/Info.plist`](./src-tauri/gen/apple/draw_iOS/Info.plist)
+  — iPad orientations, Split View / Slide Over, document-folder usage
+  description.
+- **Capabilities:** [`src-tauri/capabilities/mobile.json`](./src-tauri/capabilities/mobile.json)
+  — drops `updater`, `process` and window-drag permissions (App Store
+  handles iOS updates; iOS has no draggable window).
+- **iOS-only Tauri overlay:** [`src-tauri/tauri.ios.conf.json`](./src-tauri/tauri.ios.conf.json)
+  — overrides the macOS window block (no fixed size, no titleBarStyle)
+  with mobile-friendly defaults.
+- **Min deployment target:** iOS 16.0 — covers >95% of active iPads and
+  unlocks `100dvh`, `env(safe-area-inset-*)`, and modern WKWebView fixes.
+- **Touch / responsive layout:** Compact viewports (<768px — iPhone, iPad
+  Slide Over, half-screen Split View) flip the sidebar to a slide-in
+  drawer; wide viewports keep the desktop column. Implementation lives
+  in [`src/lib/platform.ts`](./src/lib/platform.ts) +
+  [`src/styles/app.css`](./src/styles/app.css) (`.app-shell`,
+  `.sidebar-drawer`, `.platform-ios` overrides).
+
+### Trade-offs / known caveats
+
+- The `<meta name="viewport">` declares `user-scalable=no` so iOS's
+  pinch-to-zoom-the-page doesn't fight Excalidraw's native pinch-to-zoom-
+  the-canvas. This violates WCAG 2.1 1.4.4 (the user can't zoom the UI
+  itself). A "Larger text" toggle is a sensible follow-up.
+- The auto-updater is desktop-only — iOS apps update through the App
+  Store. The `useUpdater` hook is cfg-guarded and silently no-ops on iOS.
+- Drawings are sandboxed: each platform keeps its own
+  `Application Support/ink.wolves.draw/drawings/` directory. There's no
+  cross-device sync. Files.app integration (which would expose drawings
+  to AirDrop and iCloud Drive) is deferred — toggle
+  `UIFileSharingEnabled` and `LSSupportsOpeningDocumentsInPlace` in the
+  Info.plist when ready, and move the data dir to `Documents/`.
+- `gen/apple/` is committed to git so CI and teammates always have a
+  working Xcode project. Per-user editor state, build outputs, and
+  Pods/Externals are gitignored.
 
 ---
 

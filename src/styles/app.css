@@ -328,3 +328,119 @@ select:focus-visible,
   transform-origin: center;
   animation: pulse-line 1.6s linear infinite;
 }
+
+/* ============================================================
+ * Mobile / safe-area shell — Phase 5
+ * ============================================================
+ *
+ * The app shell respects iOS safe-area insets (notch, home indicator,
+ * landscape side bezels) without disturbing the macOS layout. On
+ * macOS these insets are 0, so `.app-shell` collapses to behave
+ * identically to the previous `h-screen w-screen` root.
+ *
+ * 100dvh is iOS 15.4+ — it tracks the actual visible viewport
+ * (no jumping when the WKWebView address-bar appears/hides).
+ * Falls back to 100vh on older WebKit.
+ */
+.app-shell {
+  height: 100vh;
+  height: 100dvh;
+  width: 100vw;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg);
+  color: var(--text);
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+  overflow: hidden;
+}
+
+/* ---------- iOS topbar — strip the macOS traffic-lights gutter ----------
+ * The desktop `.topbar` reserves 78px on the left for the macOS traffic
+ * lights overlaid by Tauri's titleBarStyle: "Overlay". On iOS there are
+ * no traffic lights and no draggable window, so reclaim the space and
+ * pad with a small left/right gutter for visual breathing room. The
+ * topbar buttons are bumped to ≥44px to satisfy Apple HIG touch targets.
+ */
+body.platform-ios .topbar {
+  padding-left: 8px;
+  padding-right: 8px;
+  /* The drag region is a no-op on iOS but kept for shared markup. */
+  -webkit-app-region: unset;
+  app-region: unset;
+}
+body.platform-ios .topbar button {
+  min-width: 44px;
+  min-height: 44px;
+}
+
+/* ---------- Compact-viewport sidebar drawer ----------
+ * On compact viewports (<768px) the sidebar overlays the canvas as a
+ * slide-in drawer rather than living in the column layout. The drawer
+ * lives outside the normal flex flow so it stacks above the canvas
+ * without pushing it. Tap-outside closes it (handled in App.tsx).
+ *
+ * Animation: 0.18s linear translateX — matches the brutalist
+ * "no easing curve" convention used elsewhere in this file.
+ */
+.sidebar-drawer {
+  position: fixed;
+  inset: 0;
+  z-index: 150;
+  pointer-events: none;
+}
+.sidebar-drawer[data-open="true"] {
+  pointer-events: auto;
+  background: color-mix(in srgb, var(--bg) 30%, rgba(0, 0, 0, 0.5));
+}
+.sidebar-drawer-panel {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: min(85vw, 320px);
+  background: var(--bg);
+  border-right: 2px solid var(--border);
+  transform: translateX(-100%);
+  transition: transform 0.18s linear;
+  display: flex;
+  flex-direction: column;
+  /* Honor safe-area on the drawer itself in case the user has it open
+   * in landscape with a notch on the left side. */
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
+  padding-left: env(safe-area-inset-left);
+}
+.sidebar-drawer[data-open="true"] .sidebar-drawer-panel {
+  transform: translateX(0);
+}
+
+/* ============================================================
+ * iOS touch polish — Phase 8
+ * ============================================================
+ * Suppress iOS's default touch behaviors that don't fit a brutalist
+ * drafting UI: the long-press magnifier, the blue tap-flash on links,
+ * the iOS callout (copy/share) menu on file-tree rows.
+ *
+ * touch-action: manipulation on buttons removes the 300ms tap delay and
+ * disables double-tap-to-zoom (it's redundant inside Excalidraw which has
+ * its own pinch-zoom and we have user-scalable=no on the viewport).
+ *
+ * overscroll-behavior on the body prevents iOS's "rubber-band" page
+ * bounce when the user pans inside the Excalidraw canvas.
+ */
+body.platform-ios {
+  overscroll-behavior: none;
+}
+body.platform-ios .tree-row,
+body.platform-ios .topbar button,
+body.platform-ios button {
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+}
+body.platform-ios button,
+body.platform-ios [role="button"] {
+  touch-action: manipulation;
+}

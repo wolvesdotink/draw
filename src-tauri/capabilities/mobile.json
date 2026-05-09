@@ -1,12 +1,11 @@
 {
-  "$schema": "../gen/schemas/desktop-schema.json",
-  "identifier": "default",
-  "description": "Capability for the main window (desktop platforms only)",
-  "platforms": ["macOS", "windows", "linux"],
+  "$schema": "../gen/schemas/ios-schema.json",
+  "identifier": "mobile",
+  "description": "Capability for the iOS / iPadOS main window. Drops desktop-only permissions (window dragging, updater, process restart) since iOS apps update via the App Store.",
+  "platforms": ["iOS", "android"],
   "windows": ["main"],
   "permissions": [
     "core:default",
-    "core:window:allow-start-dragging",
     "opener:default",
     "fs:default",
     "fs:allow-read-text-file",
@@ -20,9 +19,6 @@
     "fs:allow-app-read-recursive",
     "fs:allow-app-write-recursive",
     "dialog:allow-open",
-    "updater:default",
-    "process:default",
-    "process:allow-restart",
     {
       "identifier": "fs:scope",
       "allow": [

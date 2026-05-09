@@ -40,6 +40,7 @@ import {
   validateExcalidrawJson,
 } from "../lib/import";
 import { ensureExt, joinRel, stripExt } from "../lib/paths";
+import { useDialog } from "./useDialog";
 
 interface PendingImport {
   /** Original absolute path for display only. */
@@ -113,6 +114,7 @@ export function useImportFlow({
   openImportedFile,
   folderChoices,
 }: UseImportFlowArgs): UseImportFlowResult {
+  const dialog = useDialog();
   const [state, setState] = useState<FlowState>({ kind: "idle" });
 
   const reset = useCallback(() => setState({ kind: "idle" }), []);
@@ -128,7 +130,7 @@ export function useImportFlow({
         if (typeof source === "object" && source !== null) {
           const result = validateExcalidrawJson(source.contents);
           if (!result.ok) {
-            window.alert(result.error);
+            void dialog.alert({ title: "Couldn't import", body: result.error });
             setState({ kind: "idle" });
             return;
           }
@@ -162,7 +164,7 @@ export function useImportFlow({
         const contents = await readImportedFile(picked);
         const result = validateExcalidrawJson(contents);
         if (!result.ok) {
-          window.alert(result.error);
+          void dialog.alert({ title: "Couldn't import", body: result.error });
           setState({ kind: "idle" });
           return;
         }
@@ -173,11 +175,14 @@ export function useImportFlow({
           pending: { sourceAbsPath: picked, contents, initialName },
         });
       } catch (err) {
-        window.alert(`Couldn't import: ${(err as Error).message}`);
+        void dialog.alert({
+          title: "Couldn't import",
+          body: (err as Error).message,
+        });
         setState({ kind: "idle" });
       }
     },
-    [],
+    [dialog],
   );
 
   // ---- handlers wired into the rendered dialogs ----
@@ -217,7 +222,10 @@ export function useImportFlow({
         // Bounce back to naming so the user can fix it; surface error there.
         // NewItemDialog supports thrown errors → setError, but we already
         // exited 'naming' to 'writing'. Re-throwing won't help. Use alert.
-        window.alert(`Couldn't import: ${(err as Error).message}`);
+        void dialog.alert({
+          title: "Couldn't import",
+          body: (err as Error).message,
+        });
         setState({
           kind: "naming",
           pending: current.pending,
@@ -226,7 +234,7 @@ export function useImportFlow({
         });
       }
     },
-    [state, existsRel, importFile, openImportedFile],
+    [state, existsRel, importFile, openImportedFile, dialog],
   );
 
   const handleNamingCancel = useCallback(() => reset(), [reset]);
@@ -243,7 +251,10 @@ export function useImportFlow({
       await openImportedFile(written);
       setState({ kind: "idle" });
     } catch (err) {
-      window.alert(`Couldn't overwrite: ${(err as Error).message}`);
+      void dialog.alert({
+        title: "Couldn't overwrite",
+        body: (err as Error).message,
+      });
       // Bounce back to naming so the user can pick a different name.
       setState({
         kind: "naming",
@@ -252,7 +263,7 @@ export function useImportFlow({
         folderOverride: folder,
       });
     }
-  }, [state, importFile, openImportedFile]);
+  }, [state, importFile, openImportedFile, dialog]);
 
   const handleRenameFromConfirm = useCallback(() => {
     const current = state;

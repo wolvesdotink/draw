@@ -18,6 +18,7 @@ import { FileTreeNode } from "./FileTreeNode";
 import { NewItemDialog, type DialogMode } from "./NewItemDialog";
 import { parentRel } from "../lib/paths";
 import { FolderIcon, NibIcon } from "./icons";
+import { useDialog } from "../hooks/useDialog";
 
 interface SidebarProps {
   fileTree: UseFileTreeResult;
@@ -76,6 +77,9 @@ export const Sidebar: FC<SidebarProps> = ({
   initialExpanded,
   onExpandedChange,
 }) => {
+  // Aliased to appDialog because there's already a local `dialog` state
+  // below for the rename / new-item modal.
+  const appDialog = useDialog();
   const [expanded, setExpanded] = useState<Set<string>>(() => {
     const out = new Set<string>();
     for (const [k, v] of Object.entries(initialExpanded)) {
@@ -173,15 +177,25 @@ export const Sidebar: FC<SidebarProps> = ({
       activePath !== null &&
       activePath.startsWith(`${node.path}/`);
     const label = node.kind === "dir" ? "folder" : "drawing";
-    const confirmed = window.confirm(
-      `Delete ${label} "${node.name}"?${node.kind === "dir" ? " This will delete its contents too." : ""}`,
-    );
+    const confirmed = await appDialog.confirm({
+      title: `Delete ${label}`,
+      subtitle: node.path,
+      body:
+        node.kind === "dir"
+          ? `This will delete "${node.name}" and all of its contents. This can't be undone.`
+          : `Delete "${node.name}"? This can't be undone.`,
+      okLabel: "DELETE",
+      destructive: true,
+    });
     if (!confirmed) return;
     if (isActive || isAncestorOfActive) onActiveFileRemoved();
     try {
       await fileTree.remove(node.path, node.kind === "dir");
     } catch (e) {
-      window.alert(`Couldn't delete: ${(e as Error).message}`);
+      void appDialog.alert({
+        title: "Couldn't delete",
+        body: (e as Error).message,
+      });
     }
   };
 
@@ -302,10 +316,13 @@ export const Sidebar: FC<SidebarProps> = ({
           onActiveFileMoved(`${newPath}${tail}`);
         }
       } catch (e) {
-        window.alert(`Couldn't move: ${(e as Error).message}`);
+        void appDialog.alert({
+          title: "Couldn't move",
+          body: (e as Error).message,
+        });
       }
     },
-    [fileTree, activePath, onActiveFileMoved, persistExpanded],
+    [fileTree, activePath, onActiveFileMoved, persistExpanded, appDialog],
   );
 
   const handleDropOnDir = useCallback(

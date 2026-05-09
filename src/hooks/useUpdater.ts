@@ -116,17 +116,32 @@ export function useUpdater() {
         //   { event: "Started",  data: { contentLength } }
         //   { event: "Progress", data: { chunkLength    } }
         //   { event: "Finished" }
+        //
+        // We deliberately do NOT transition to "ready" on "Finished". In the
+        // plugin's flow (tauri-plugin-updater src/updater.rs:702-714), Finished
+        // fires the moment the byte stream ends — BEFORE signature verification
+        // and BEFORE the install step that extracts the .tar.gz and replaces
+        // the running .app bundle. Either of those later steps can fail; if we
+        // flipped to "ready" here the user would see the RESTART button briefly
+        // before the catch path moved us to "error". We use the promise
+        // resolution below as the single source of truth instead.
         if (event.event === "Started") {
           const total = (event.data as { contentLength?: number }).contentLength ?? 0;
           setState((s) => ({ ...s, totalBytes: total }));
         } else if (event.event === "Progress") {
           const chunk = (event.data as { chunkLength?: number }).chunkLength ?? 0;
           setState((s) => ({ ...s, downloaded: s.downloaded + chunk }));
-        } else if (event.event === "Finished") {
-          setState((s) => ({ ...s, status: "ready" }));
         }
       });
+      // Promise resolved → download + signature verify + install all succeeded.
+      setState((s) => ({ ...s, status: "ready" }));
     } catch (e) {
+      // Surface the full error in devtools so we can diagnose specific failure
+      // modes (signature mismatch, gzip/tar decode error, /Applications write
+      // permission denied, AppleScript admin prompt cancelled, etc.). The
+      // message string is also stored on state so UpdateButton can show it
+      // in the error tooltip.
+      console.error("[updater] install failed:", e);
       setState((s) => ({
         ...s,
         status: "error",

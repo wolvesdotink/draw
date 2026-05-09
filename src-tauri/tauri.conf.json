@@ -66,7 +66,7 @@
     "updater": {
       "active": true,
       "dialog": false,
-      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDc2MkE1NkYxODI1M0ZGNUQKUldSZC8xT0M4VllxZHZ2czlBL2tkOEwwSWNtVXdQQ0NtS2hieUZUUnF4MVBoM05CbzEzbklRZ3EK",
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDc1MkIxNjI3MzQwRTk4NzgKUldSNG1BNDBKeFlyZFoyUVJmaTBrT2ZXdXJWY0d5N0o3ak5ZaWQ5THRLU0lxQS9IbDZGK083bG4K",
       "endpoints": [
         "https://github.com/wolvesdotink/draw/releases/latest/download/latest.json"
       ]

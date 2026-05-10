@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="./src-tauri/icons/icon.svg" alt="draw logo" width="128" height="128">
+</p>
+
 # draw
 
 **A quiet, local-first sketchpad for the desktop.**

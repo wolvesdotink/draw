@@ -1,6 +1,6 @@
 [package]
 name = "draw"
-version = "0.2.4"
+version = "0.2.5"
 description = "Local-first Excalidraw desktop app"
 authors = ["Wolves <https://wolves.ink>"]
 edition = "2021"

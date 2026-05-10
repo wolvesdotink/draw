@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  draw — DMG installer background.
+
+  Drafting-table aesthetic, light. Pure white, hard 4px (= 2pt at 1x) rules
+  bracketing the design like the app's topbar. Drafting-dot grid in the
+  middle band echoes the empty canvas state. Sketchy Excalidraw-style
+  arrow narrates the drag from app icon to Applications folder.
+
+  Canvas: 1440 × 960 px (2× the 720×480 DMG window for retina).
+  All coords in pixels. Window points = pixels ÷ 2.
+  Icon centers (set in tauri.conf.json):
+    draw          → (200, 240) pt = (400, 480) px
+    Applications  → (520, 240) pt = (1040, 480) px
+  The arrow runs through the gap between them at y=480 px.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" width="1440" height="960" viewBox="0 0 1440 960" shape-rendering="geometricPrecision">
+
+  <defs>
+    <!-- 22pt × 22pt drafting grid (44×44 px at 2×). Same colour and spacing
+         as the empty-canvas state in src/styles/app.css. -->
+    <pattern id="draftingDots" x="0" y="0" width="44" height="44" patternUnits="userSpaceOnUse">
+      <circle cx="22" cy="22" r="2" fill="#000000" fill-opacity="0.18"/>
+    </pattern>
+  </defs>
+
+  <!-- Pure white field. -->
+  <rect width="1440" height="960" fill="#ffffff"/>
+
+  <!-- Drafting-dot grid in the middle band only (between the two hard rules). -->
+  <rect x="0" y="120" width="1440" height="720" fill="url(#draftingDots)"/>
+
+  <!-- TOP: "DRAW" wordmark + 4px hard rule (= 2pt rule from .topbar in app.css). -->
+  <text x="80" y="80"
+        font-family="JetBrains Mono, monospace"
+        font-weight="700" font-size="56"
+        letter-spacing="4" fill="#000000">DRAW</text>
+  <rect x="0" y="116" width="1440" height="4" fill="#000000"/>
+
+  <!-- ARROW: Excalidraw-style sketchy stroke from (500,480) → (940,480),
+       deliberately wobbly so it reads as hand-drawn next to Finder's
+       crisp icons + labels. -->
+  <path d="M 500 480
+           C 590 474, 680 488, 770 478
+           C 850 472, 900 486, 940 480"
+        stroke="#000000" stroke-width="6" fill="none"
+        stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- Arrowhead: two short strokes meeting at the tip (940,480). -->
+  <path d="M 912 460 L 940 480 L 912 500"
+        stroke="#000000" stroke-width="6" fill="none"
+        stroke-linecap="round" stroke-linejoin="round"/>
+
+  <!-- BOTTOM: 4px hard rule + brand left, tagline right. -->
+  <rect x="0" y="840" width="1440" height="4" fill="#000000"/>
+  <text x="80" y="920"
+        font-family="JetBrains Mono, monospace"
+        font-weight="500" font-size="20"
+        letter-spacing="4" fill="#000000">WOLVES.INK</text>
+  <text x="1360" y="920"
+        font-family="JetBrains Mono, monospace"
+        font-weight="500" font-size="20"
+        letter-spacing="4" fill="#000000"
+        text-anchor="end">LOCAL-FIRST EXCALIDRAW</text>
+
+</svg>

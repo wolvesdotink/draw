@@ -268,6 +268,171 @@ body {
   will-change: transform;
 }
 
+/* ============================================================
+ * Excalidraw — brutalist UI overlay
+ * ============================================================
+ *
+ * Excalidraw 0.18.1 ships a soft, rounded, gray/blue chrome that
+ * clashes with the rest of the app. Two layers:
+ *
+ *   A. Remap Excalidraw's CSS custom properties to our brutalist
+ *      tokens. Excalidraw exposes ~268 vars; we touch the ones
+ *      that drive surfaces, text, borders, buttons, fields, shadows,
+ *      and the UI font. Scoped to `.excalidraw` so nothing leaks
+ *      to the app chrome above it.
+ *
+ *   B. Class-level overrides for what the vars don't cover —
+ *      enforcing zero radii on islands/buttons/modals, hard offset
+ *      shadows on elevated surfaces, mono font on UI text, and
+ *      inverted (not blue) selected-state on toolbar tools.
+ *
+ * Drawing color swatches are intentionally left alone — they are
+ * tools, not chrome, and need their actual colors to stay legible.
+ *
+ * Light/dark variants ride on the existing `--bg / --text / --border /
+ * --shadow` tokens (which already flip with `.app--theme-light/dark`),
+ * so this overlay needs no per-theme branches.
+ */
+
+/* Layer A — CSS custom property remap, scoped to .excalidraw */
+.excalidraw {
+  /* Surfaces */
+  --background: var(--bg);
+  --island-bg-color: var(--bg);
+  --color-surface-low: var(--bg);
+  --color-surface-mid: var(--bg);
+  --color-surface-high: var(--bg-elevated);
+  --color-surface-primary-container: var(--bg-hover);
+
+  /* Text */
+  --text-color: var(--text);
+  --color-on-surface: var(--text);
+  --color-muted: var(--text-muted);
+
+  /* Borders & radii */
+  --border-color: var(--border);
+  --color-border-outline: var(--border);
+  --border-radius-lg: 0;
+  --border-radius-md: 0;
+
+  /* Buttons */
+  --button-bg: var(--bg);
+  --button-border: var(--border);
+  --button-color: var(--text);
+  --button-hover-bg: var(--bg-hover);
+  --button-hover-border: var(--border);
+  --button-hover-color: var(--text);
+  --button-active-bg: var(--text);
+  --button-selected-bg: var(--text);
+  --button-destructive-bg-color: var(--danger);
+
+  /* Primary accent — flatten Excalidraw's blue to our black/white */
+  --color-primary: var(--text);
+  --color-primary-darker: var(--text);
+  --color-primary-darkest: var(--text);
+  --color-primary-hover: var(--text);
+  --color-primary-light: var(--bg-hover);
+
+  /* Shadows — hard offset, no blur */
+  --shadow-island: var(--shadow);
+  --modal-shadow: var(--shadow-popover);
+
+  /* Text fields */
+  --ExcTextField--background: var(--bg);
+  --ExcTextField--border: var(--border);
+  --ExcTextField--border-active: var(--text);
+  --ExcTextField--color: var(--text);
+  --ExcTextField--placeholder: var(--text-faint);
+
+  /* RadioGroup / Switch */
+  --RadioGroup-background: var(--bg);
+  --RadioGroup-border: var(--border);
+  --RadioGroup-choice-background-on: var(--text);
+  --RadioGroup-choice-background-off: var(--bg);
+  --Switch-track-background: var(--bg);
+  --Switch-active-background: var(--text);
+  --Switch-thumb-background: var(--bg);
+
+  /* Typography */
+  --ui-font: var(--font-mono);
+  --font-family: var(--font-mono);
+}
+
+/* Layer B — class-level overrides */
+
+/* Zero radius across all Excalidraw chrome */
+.excalidraw .Island,
+.excalidraw .Modal__content,
+.excalidraw .Dialog,
+.excalidraw .popover,
+.excalidraw .dropdown-menu,
+.excalidraw .dropdown-menu-container,
+.excalidraw .dropdown-menu-item,
+.excalidraw .App-toolbar,
+.excalidraw .App-toolbar-container,
+.excalidraw .ToolIcon,
+.excalidraw .ToolIcon__icon,
+.excalidraw .excalidraw-button,
+.excalidraw button,
+.excalidraw input,
+.excalidraw select,
+.excalidraw textarea,
+.excalidraw .ExcTextField,
+.excalidraw .ExcTextField__input,
+.excalidraw .RadioGroup,
+.excalidraw .RadioGroup__choice,
+.excalidraw .Switch {
+  border-radius: 0 !important;
+}
+
+/* Hard offset shadows + 2px borders on elevated surfaces */
+.excalidraw .Island,
+.excalidraw .App-toolbar,
+.excalidraw .App-menu_top > .Island {
+  box-shadow: var(--shadow) !important;
+  border: 2px solid var(--border) !important;
+}
+.excalidraw .Modal__content,
+.excalidraw .Dialog,
+.excalidraw .popover,
+.excalidraw .dropdown-menu-container {
+  box-shadow: var(--shadow-popover) !important;
+  border: 2px solid var(--border) !important;
+}
+
+/* Mono font on UI text, tooltips, kbd hints, menu items */
+.excalidraw .ToolIcon__keybinding,
+.excalidraw .excalidraw-tooltip,
+.excalidraw .help-icon,
+.excalidraw .App-menu button,
+.excalidraw .dropdown-menu-item,
+.excalidraw .dropdown-menu-item-base {
+  font-family: var(--font-mono) !important;
+}
+
+/* Selected tool: inverted colors instead of accent tint */
+.excalidraw .ToolIcon__icon.fillable[aria-pressed="true"],
+.excalidraw .ToolIcon[aria-selected="true"] .ToolIcon__icon,
+.excalidraw .ToolIcon__icon[aria-pressed="true"] {
+  background: var(--text) !important;
+  color: var(--bg) !important;
+}
+.excalidraw .ToolIcon__icon.fillable[aria-pressed="true"] svg,
+.excalidraw .ToolIcon[aria-selected="true"] .ToolIcon__icon svg {
+  color: var(--bg) !important;
+  fill: var(--bg) !important;
+}
+
+/* PRESERVE drawing color swatches — these are tools, not chrome.
+ * The picker container can square off, but the individual color tiles
+ * keep Excalidraw's own styling so the colors themselves stay legible. */
+.excalidraw .color-picker-swatch,
+.excalidraw .color-picker__button,
+.excalidraw .color-picker-content--swatches button,
+.excalidraw .color-picker-content button[aria-label]:not(.color-picker-keybinding) {
+  /* intentionally left to Excalidraw's defaults */
+}
+
 /* ---------- Buttons: brutalist focus ring (1px solid offset) ---------- */
 button:focus-visible,
 input:focus-visible,
@@ -295,9 +460,12 @@ select:focus-visible,
   box-shadow: var(--shadow-popover);
 }
 
-/* Force-zero radii on app chrome — but EXEMPT Excalidraw's own UI, which
- * has its own design language we don't want to override. We target each
- * chrome scope explicitly instead of `.app *`. */
+/* Force-zero radii on app chrome. Excalidraw's own UI used to be exempted
+ * here, but the dedicated brutalist overlay above (see "Excalidraw —
+ * brutalist UI overlay") now squares off its surfaces deliberately, so the
+ * scope below only needs to cover our own chrome — topbar, sidebar, dialogs,
+ * pulse-line. Each is targeted explicitly rather than via `.app *` so the
+ * `.excalidraw` subtree continues to be controlled solely by its overlay. */
 .app .topbar *,
 .app aside *,
 .app [role="dialog"] *,

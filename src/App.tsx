@@ -293,7 +293,7 @@ function App() {
 
   const submitNewDrawingDialog = async (name: string, targetFolder?: string) => {
     const parent = targetFolder ?? "";
-    const newPath = await fileTree.createFile(parent, name);
+    const newPath = await fileTree.createFile(parent, name, theme);
     setNewDrawingDialogOpen(false);
     await handleSelectFile(newPath);
   };
@@ -664,6 +664,7 @@ function App() {
                 onExpandedChange={(expandedFolders) =>
                   updatePersistedState({ expandedFolders })
                 }
+                theme={theme}
               />
             </div>
             <SidebarResizer
@@ -720,6 +721,7 @@ function App() {
               onExpandedChange={(expandedFolders) =>
                 updatePersistedState({ expandedFolders })
               }
+              theme={theme}
             />
           </div>
         </div>

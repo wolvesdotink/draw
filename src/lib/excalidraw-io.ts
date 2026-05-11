@@ -21,6 +21,7 @@ import type {
   NonDeleted,
 } from "@excalidraw/excalidraw/element/types";
 import type { AppState, BinaryFiles } from "@excalidraw/excalidraw/types";
+import type { Theme } from "./state";
 
 export interface ExcalidrawScene {
   elements: readonly ExcalidrawElement[];
@@ -78,12 +79,24 @@ function pruneAppState(appState: Partial<AppState>): Partial<AppState> {
   return out as Partial<AppState>;
 }
 
+/**
+ * Background color for new scenes, keyed off the current app theme.
+ * Matches `--bg` in app.css (#ffffff light / #121212 dark) so a brand-new
+ * drawing visually slots into the brutalist canvas instead of flashing a
+ * white rectangle in dark mode. Existing files keep their persisted
+ * `viewBackgroundColor` on load — this only affects the default for new
+ * files.
+ */
+function defaultBackgroundForTheme(theme: Theme): string {
+  return theme === "dark" ? "#121212" : "#ffffff";
+}
+
 /** Default empty scene — used when creating a new file. */
-export function emptyScene(): ExcalidrawScene {
+export function emptyScene(theme: Theme): ExcalidrawScene {
   return {
     elements: [],
     appState: {
-      viewBackgroundColor: "#ffffff",
+      viewBackgroundColor: defaultBackgroundForTheme(theme),
       gridSize: null as unknown as number,
     },
     files: {},
@@ -131,6 +144,6 @@ export async function saveDrawing(rel: string, scene: ExcalidrawScene): Promise<
 }
 
 /** Serialize an empty scene as the initial contents of a newly created file. */
-export async function writeEmptyDrawing(rel: string): Promise<void> {
-  await saveDrawing(rel, emptyScene());
+export async function writeEmptyDrawing(rel: string, theme: Theme): Promise<void> {
+  await saveDrawing(rel, emptyScene(theme));
 }

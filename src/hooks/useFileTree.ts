@@ -9,6 +9,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { mkdir, readDir, remove, rename, exists, writeAtomic } from "../lib/fs";
 import { writeEmptyDrawing } from "../lib/excalidraw-io";
+import type { Theme } from "../lib/state";
 import {
   basename,
   DRAWINGS_DIR,
@@ -75,9 +76,11 @@ export interface UseFileTreeResult {
   refresh: () => Promise<void>;
   /**
    * Create a new drawing. Returns the rel path of the created file.
-   * `parentDirRel` is the parent folder ("" = root). `name` is without extension.
+   * `parentDirRel` is the parent folder ("" = root). `name` is without
+   * extension. `theme` chooses the default `viewBackgroundColor` so a brand-
+   * new drawing matches the current canvas theme.
    */
-  createFile: (parentDirRel: string, name: string) => Promise<string>;
+  createFile: (parentDirRel: string, name: string, theme: Theme) => Promise<string>;
   /** Create a new folder. Returns the rel path of the created dir. */
   createFolder: (parentDirRel: string, name: string) => Promise<string>;
   /** Rename a file or folder. Returns the new rel path. */
@@ -132,7 +135,7 @@ export function useFileTree(): UseFileTreeResult {
   }, [refresh]);
 
   const createFile = useCallback(
-    async (parentDirRel: string, name: string): Promise<string> => {
+    async (parentDirRel: string, name: string, theme: Theme): Promise<string> => {
       if (!isValidName(name)) throw new Error(`Invalid name: ${name}`);
       const filename = ensureExt(name);
       const rel = joinRel(parentDirRel, filename);
@@ -143,7 +146,7 @@ export function useFileTree(): UseFileTreeResult {
       if (parentDirRel) {
         await mkdir(toAppDataPath(parentDirRel), { recursive: true });
       }
-      await writeEmptyDrawing(rel);
+      await writeEmptyDrawing(rel, theme);
       await refresh();
       return rel;
     },

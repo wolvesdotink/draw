@@ -14,6 +14,7 @@
  */
 import { useCallback, useEffect, useMemo, useState, type FC } from "react";
 import type { TreeNode, UseFileTreeResult } from "../hooks/useFileTree";
+import type { Theme } from "../lib/state";
 import { FileTreeNode } from "./FileTreeNode";
 import { NewItemDialog, type DialogMode } from "./NewItemDialog";
 import { parentRel } from "../lib/paths";
@@ -31,6 +32,8 @@ interface SidebarProps {
   /** Persisted expand state from app state. */
   initialExpanded: Record<string, boolean>;
   onExpandedChange: (expanded: Record<string, boolean>) => void;
+  /** Current app theme — used to pick the default canvas bg for new drawings. */
+  theme: Theme;
 }
 
 interface ContextMenuState {
@@ -76,6 +79,7 @@ export const Sidebar: FC<SidebarProps> = ({
   onActiveFileMoved,
   initialExpanded,
   onExpandedChange,
+  theme,
 }) => {
   // Aliased to appDialog because there's already a local `dialog` state
   // below for the rename / new-item modal.
@@ -203,7 +207,7 @@ export const Sidebar: FC<SidebarProps> = ({
     if (dialog === null) return;
     try {
       if (dialog.mode === "newFile") {
-        const newPath = await fileTree.createFile(dialog.parentDir, name);
+        const newPath = await fileTree.createFile(dialog.parentDir, name, theme);
         // Auto-expand the parent folder so the new file is visible
         if (dialog.parentDir) {
           setExpanded((prev) => {

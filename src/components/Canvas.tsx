@@ -11,7 +11,7 @@
  */
 import { Excalidraw } from "@excalidraw/excalidraw";
 import "@excalidraw/excalidraw/index.css";
-import type { FC } from "react";
+import { memo, type FC } from "react";
 import type { ExcalidrawScene } from "../lib/excalidraw-io";
 import type { ExcalidrawImperativeAPI } from "@excalidraw/excalidraw/types";
 import type { ExcalidrawElement } from "@excalidraw/excalidraw/element/types";
@@ -33,7 +33,7 @@ interface CanvasProps {
   ) => void;
 }
 
-export const Canvas: FC<CanvasProps> = ({
+const CanvasImpl: FC<CanvasProps> = ({
   filePath,
   loadVersion,
   initialScene,
@@ -58,3 +58,5 @@ export const Canvas: FC<CanvasProps> = ({
     </div>
   );
 };
+
+export const Canvas = memo(CanvasImpl);

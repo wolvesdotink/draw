@@ -126,8 +126,7 @@ export async function saveDrawing(rel: string, scene: ExcalidrawScene): Promise<
     appState: pruneAppState(scene.appState),
     files: scene.files,
   };
-  // Indent with 2 spaces to keep diffs readable if the user version-controls drawings/.
-  const json = JSON.stringify(payload, null, 2);
+  const json = JSON.stringify(payload);
   await writeAtomic(toAppDataPath(rel), json);
 }
 

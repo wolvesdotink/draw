@@ -26,7 +26,7 @@ import type { ExcalidrawImperativeAPI } from "@excalidraw/excalidraw/types";
 import type { ExcalidrawElement } from "@excalidraw/excalidraw/element/types";
 import type { AppState, BinaryFiles } from "@excalidraw/excalidraw/types";
 
-const DEBOUNCE_MS = 500;
+const DEBOUNCE_MS = 1000;
 
 interface PendingSave {
   path: string;

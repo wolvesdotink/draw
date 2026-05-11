@@ -234,9 +234,38 @@ body {
   box-shadow: inset 0 0 0 2px var(--accent);
 }
 
-/* ---------- Excalidraw container ---------- */
+/* ---------- Excalidraw container ----------
+ * GPU layer promotion + paint containment.
+ *
+ * Why: WKWebView's Canvas2D is CPU-bound. We can't speed up the
+ * rasterization itself, but `transform: translateZ(0)` on the
+ * canvas wrapper hoists it to its own compositor layer so the
+ * painted bitmap is uploaded once per frame and composited on
+ * the GPU with the surrounding chrome (topbar, sidebar, tooltips)
+ * rather than re-rasterized into a shared layer. `contain` tells
+ * the browser this subtree's layout/paint is isolated, skipping
+ * dependency recalculation on the rest of the page each frame.
+ *
+ * Targets `.excalidraw__canvas-wrapper` — the single div Excalidraw
+ * places its two <canvas> elements (static + interactive) inside.
+ * Promoting the wrapper, not each canvas, keeps us at one extra
+ * layer instead of two (the static canvas already isn't repainting
+ * on zoom-pan in 0.18.1 — the interactive layer does the work).
+ *
+ * `contain: strict` would include `contain: size` which collapses
+ * intrinsic size to 0 and breaks the `flex: 1` sizing — we use the
+ * safe subset `layout style paint`.
+ */
+.canvas {
+  contain: layout style paint;
+}
 .canvas > .excalidraw {
   flex: 1;
+  contain: layout style paint;
+}
+.canvas .excalidraw__canvas-wrapper {
+  transform: translateZ(0);
+  will-change: transform;
 }
 
 /* ---------- Buttons: brutalist focus ring (1px solid offset) ---------- */

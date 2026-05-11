@@ -54,6 +54,11 @@ const CanvasImpl: FC<CanvasProps> = ({
         excalidrawAPI={onAPI}
         onChange={onChange}
         theme={theme}
+        // No ancestor of `.canvas` can scroll (overflow:hidden cascade in
+        // app.css), so Excalidraw's scroll-listener bookkeeping is pure
+        // overhead on every wheel/pointer event. Off → fewer offset
+        // recalcs during zoom-pan.
+        detectScroll={false}
       />
     </div>
   );

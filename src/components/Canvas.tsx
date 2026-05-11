@@ -11,7 +11,8 @@
  */
 import { Excalidraw } from "@excalidraw/excalidraw";
 import "@excalidraw/excalidraw/index.css";
-import { memo, type FC } from "react";
+import { memo, useCallback, useRef, type FC } from "react";
+import { useCanvasZoomProxy } from "../hooks/useCanvasZoomProxy";
 import type { ExcalidrawScene } from "../lib/excalidraw-io";
 import type { ExcalidrawImperativeAPI } from "@excalidraw/excalidraw/types";
 import type { ExcalidrawElement } from "@excalidraw/excalidraw/element/types";
@@ -41,8 +42,27 @@ const CanvasImpl: FC<CanvasProps> = ({
   onAPI,
   onChange,
 }) => {
+  // Local handle on the API so the zoom proxy can read/write Excalidraw
+  // state without depending on the parent's ref. We still forward the API
+  // up to the caller via `onAPI` so useAutoSave and friends keep working.
+  const apiRef = useRef<ExcalidrawImperativeAPI | null>(null);
+  const getAPI = useCallback(() => apiRef.current, []);
+  const { containerRef, dataGesture } = useCanvasZoomProxy(getAPI);
+
+  const handleAPI = useCallback(
+    (api: ExcalidrawImperativeAPI) => {
+      apiRef.current = api;
+      onAPI(api);
+    },
+    [onAPI],
+  );
+
   return (
-    <div className="canvas absolute inset-0 flex">
+    <div
+      ref={containerRef}
+      className="canvas absolute inset-0 flex"
+      data-gesture={dataGesture}
+    >
       <Excalidraw
         key={`${filePath}::${loadVersion}`}
         initialData={{
@@ -51,7 +71,7 @@ const CanvasImpl: FC<CanvasProps> = ({
           files: initialScene.files,
           scrollToContent: true,
         }}
-        excalidrawAPI={onAPI}
+        excalidrawAPI={handleAPI}
         onChange={onChange}
         theme={theme}
         // No ancestor of `.canvas` can scroll (overflow:hidden cascade in

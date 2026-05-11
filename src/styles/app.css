@@ -235,26 +235,30 @@ body {
 }
 
 /* ---------- Excalidraw container ----------
- * GPU layer promotion + paint containment.
+ * Paint containment + DYNAMIC GPU layer promotion.
  *
- * Why: WKWebView's Canvas2D is CPU-bound. We can't speed up the
- * rasterization itself, but `transform: translateZ(0)` on the
- * canvas wrapper hoists it to its own compositor layer so the
- * painted bitmap is uploaded once per frame and composited on
- * the GPU with the surrounding chrome (topbar, sidebar, tooltips)
- * rather than re-rasterized into a shared layer. `contain` tells
- * the browser this subtree's layout/paint is isolated, skipping
- * dependency recalculation on the rest of the page each frame.
+ * `contain: layout style paint` isolates this subtree from the rest
+ * of the page so the browser can skip dependency recalc on each
+ * frame. `contain: strict` would also include `size` which collapses
+ * intrinsic size to 0 and breaks `flex: 1` — we use the safe subset.
  *
- * Targets `.excalidraw__canvas-wrapper` — the single div Excalidraw
- * places its two <canvas> elements (static + interactive) inside.
- * Promoting the wrapper, not each canvas, keeps us at one extra
- * layer instead of two (the static canvas already isn't repainting
- * on zoom-pan in 0.18.1 — the interactive layer does the work).
+ * Why promotion is gated, not static:
  *
- * `contain: strict` would include `contain: size` which collapses
- * intrinsic size to 0 and breaks the `flex: 1` sizing — we use the
- * safe subset `layout style paint`.
+ *   A promoted compositor layer (via `will-change: transform` or
+ *   `translateZ(0)`) wins for PAN — the canvas bitmap is unchanged,
+ *   only the layer transform moves, so the GPU composites without
+ *   re-uploading the texture.
+ *
+ *   But for ZOOM it's a trap. Excalidraw redraws the entire static
+ *   canvas at each zoom frame (the cache is keyed on zoom and
+ *   invalidates). A promoted layer forces a CPU→GPU texture upload
+ *   of cssW * cssH * dpr² * 4 bytes EVERY frame — ~10MB at DPR 2,
+ *   ~23MB at DPR 3. On WKWebView's IOSurface upload path that is
+ *   the bottleneck.
+ *
+ *   So we leave the wrapper unpromoted at rest, and only opt in
+ *   when a gesture handler sets `data-gesture="active"` on `.canvas`
+ *   (zoom-proxy commit / future pan optimizations).
  */
 .canvas {
   contain: layout style paint;
@@ -263,7 +267,7 @@ body {
   flex: 1;
   contain: layout style paint;
 }
-.canvas .excalidraw__canvas-wrapper {
+.canvas[data-gesture="active"] .excalidraw__canvas-wrapper {
   transform: translateZ(0);
   will-change: transform;
 }

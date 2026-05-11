@@ -184,16 +184,20 @@ function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Flush state writes on unload
+  // Flush pending writes on unload. `beforeunload` is synchronous-ish — we
+  // can't await, but kicking off the writes here gives the fs plugin a chance
+  // to ship them into Rust before the webview tears down. Covers Cmd+Q within
+  // the 1s autosave debounce window, which would otherwise drop the last edit.
   useEffect(() => {
     const handler = () => {
+      void autoSave.flushPending();
       void flushStateDebounced();
     };
     window.addEventListener("beforeunload", handler);
     return () => {
       window.removeEventListener("beforeunload", handler);
     };
-  }, []);
+  }, [autoSave.flushPending]);
 
   // Menu-driven update check. The macOS app menu's "Check for Updates…" item
   // emits this event from Rust (see src-tauri/src/lib.rs); we just relay it

@@ -296,18 +296,26 @@ body {
 
 /* Layer A — CSS custom property remap, scoped to .excalidraw */
 .excalidraw {
-  /* Surfaces */
+  /* Surfaces.
+   * `--color-surface-primary-container` is the SELECTED tool's background
+   * (Excalidraw's pale lavender by default). We want full contrast — pure
+   * black in light mode, pure white in dark — so a selected toolbar tool
+   * reads as a hard block, matching every other "active" affordance in the
+   * app. `--color-on-primary-container` is the icon/text laid over it, so it
+   * has to invert. */
   --background: var(--bg);
   --island-bg-color: var(--bg);
   --color-surface-low: var(--bg);
   --color-surface-mid: var(--bg);
   --color-surface-high: var(--bg-elevated);
-  --color-surface-primary-container: var(--bg-hover);
+  --color-surface-primary-container: var(--text);
+  --color-on-primary-container: var(--bg);
 
   /* Text */
   --text-color: var(--text);
   --color-on-surface: var(--text);
   --color-muted: var(--text-muted);
+  --icon-fill-color: var(--text);
 
   /* Borders & radii */
   --border-color: var(--border);
@@ -326,6 +334,13 @@ body {
   --button-selected-bg: var(--text);
   --button-destructive-bg-color: var(--danger);
 
+  /* `ToolIcon_type_button.ToolIcon--selected` reads its bg from these. We
+   * collapse Excalidraw's three-step gray ramp onto our hover token so the
+   * button-style selected state matches the radio/checkbox style above. */
+  --button-gray-1: var(--bg-hover);
+  --button-gray-2: var(--bg-hover);
+  --button-gray-3: var(--text);
+
   /* Primary accent — flatten Excalidraw's blue to our black/white */
   --color-primary: var(--text);
   --color-primary-darker: var(--text);
@@ -336,6 +351,11 @@ body {
   /* Shadows — hard offset, no blur */
   --shadow-island: var(--shadow);
   --modal-shadow: var(--shadow-popover);
+
+  /* Sliders (opacity, font size, etc.) — track in the border color,
+   * thumb in full-contrast text color. The thumb is squared in Layer B. */
+  --color-slider-track: var(--border);
+  --color-slider-thumb: var(--text);
 
   /* Text fields */
   --ExcTextField--background: var(--bg);
@@ -410,17 +430,59 @@ body {
   font-family: var(--font-mono) !important;
 }
 
-/* Selected tool: inverted colors instead of accent tint */
-.excalidraw .ToolIcon__icon.fillable[aria-pressed="true"],
-.excalidraw .ToolIcon[aria-selected="true"] .ToolIcon__icon,
-.excalidraw .ToolIcon__icon[aria-pressed="true"] {
+/* Selected tool: inverted colors instead of the default lavender tint.
+ *
+ * Excalidraw 0.18.1 wires the selected state through a *hidden* radio /
+ * checkbox input whose `:checked` state is read via the adjacent-sibling
+ * combinator on `.ToolIcon__icon`. Targeting `[aria-pressed]` (which is
+ * what one would expect) does nothing — the markup uses the input pattern
+ * instead. Button-style tools take a third path via `.ToolIcon--selected`.
+ *
+ * The CSS var remap above already handles the *colors* (selected bg becomes
+ * `--text`, foreground becomes `--bg`), but Excalidraw's stylesheet sets the
+ * background on `.ToolIcon__icon` with a specificity that wins on its own
+ * cascade — these `!important` rules pin the inversion regardless. */
+.excalidraw .ToolIcon .ToolIcon_type_radio:checked + .ToolIcon__icon,
+.excalidraw .ToolIcon .ToolIcon_type_checkbox:checked + .ToolIcon__icon,
+.excalidraw .ToolIcon.fillable .ToolIcon_type_radio:checked + .ToolIcon__icon,
+.excalidraw .ToolIcon.fillable .ToolIcon_type_checkbox:checked + .ToolIcon__icon,
+.excalidraw .ToolIcon_type_button.ToolIcon--selected,
+.excalidraw .Modal .ToolIcon_type_button.ToolIcon--selected {
   background: var(--text) !important;
   color: var(--bg) !important;
 }
-.excalidraw .ToolIcon__icon.fillable[aria-pressed="true"] svg,
-.excalidraw .ToolIcon[aria-selected="true"] .ToolIcon__icon svg {
+.excalidraw .ToolIcon .ToolIcon_type_radio:checked + .ToolIcon__icon svg,
+.excalidraw .ToolIcon .ToolIcon_type_checkbox:checked + .ToolIcon__icon svg,
+.excalidraw .ToolIcon.fillable .ToolIcon_type_radio:checked + .ToolIcon__icon svg,
+.excalidraw .ToolIcon.fillable .ToolIcon_type_checkbox:checked + .ToolIcon__icon svg,
+.excalidraw .ToolIcon_type_button.ToolIcon--selected svg {
   color: var(--bg) !important;
   fill: var(--bg) !important;
+}
+
+/* Opacity / range slider — squared track, squared thumb with a 2px border.
+ * The variables above set the colors; this strips the rounding Excalidraw
+ * applies inline (`border-radius: 2px` on the track, `50%` on the thumb)
+ * and gives the thumb a hairline outline so it reads as a control surface,
+ * not a circle. */
+.excalidraw .range-input {
+  border-radius: 0 !important;
+  height: 4px;
+}
+.excalidraw .range-input::-webkit-slider-thumb {
+  border-radius: 0 !important;
+  border: 2px solid var(--border) !important;
+  background: var(--text) !important;
+}
+.excalidraw .range-input::-moz-range-thumb {
+  border-radius: 0 !important;
+  border: 2px solid var(--border) !important;
+  background: var(--text) !important;
+}
+.excalidraw .value-bubble,
+.excalidraw .zero-label {
+  font-family: var(--font-mono) !important;
+  color: var(--text) !important;
 }
 
 /* PRESERVE drawing color swatches — these are tools, not chrome.

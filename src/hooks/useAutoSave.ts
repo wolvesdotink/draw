@@ -17,8 +17,11 @@
  *      transitions otherwise.
  *
  *   5) `onChange` fires for non-content events too (selection, cursor moves).
- *      We skip saves when elements + appState persistable fields + files
- *      reference-equal the last-snapshotted values.
+ *      We skip those by fingerprinting elements via per-element `version`
+ *      (bumped by Excalidraw's `mutateElement`) plus a few persistable
+ *      appState fields. Reference-comparing the elements array is NOT enough
+ *      — Excalidraw mutates element objects in place without swapping the
+ *      array, so a ref check misses move/resize/restyle of existing shapes.
  */
 import { useCallback, useEffect, useRef } from "react";
 import { saveDrawing, type ExcalidrawScene } from "../lib/excalidraw-io";
@@ -34,11 +37,28 @@ interface PendingSave {
 }
 
 interface SeenSnapshot {
-  elements: readonly ExcalidrawElement[];
+  /**
+   * Rolling hash of (length, per-element version). Excalidraw mutates element
+   * objects in place via `mutateElement` (bumping `element.version`) without
+   * replacing the elements array, so a plain reference check on the array
+   * misses move/resize/rotate/restyle/text-edit of existing shapes. The
+   * fingerprint catches those because `version` bumps on every mutation.
+   */
+  elementsFingerprint: number;
   filesCount: number;
   // Persistable appState fields whose changes we DO want to trigger saves
   bgColor: string | undefined;
   gridSize: number | null | undefined;
+}
+
+function fingerprintElements(elements: readonly ExcalidrawElement[]): number {
+  let h = elements.length | 0;
+  for (let i = 0; i < elements.length; i++) {
+    // Math.imul keeps the result in int32. Mixing with `i` separates
+    // permutations (reorder without version bumps still shifts the hash).
+    h = (Math.imul(h, 31) + Math.imul(elements[i].version | 0, 1_000_003) + i) | 0;
+  }
+  return h;
 }
 
 export interface UseAutoSaveResult {
@@ -111,10 +131,11 @@ export function useAutoSave(): UseAutoSaveResult {
       if (path === null || apiRef.current === null) return;
 
       const filesCount = Object.keys(files).length;
+      const fp = fingerprintElements(elements);
       const seen = lastSeenRef.current;
       const persistableChanged =
         seen === null ||
-        seen.elements !== elements ||
+        seen.elementsFingerprint !== fp ||
         seen.filesCount !== filesCount ||
         seen.bgColor !== appState.viewBackgroundColor ||
         seen.gridSize !== (appState.gridSize as number | null | undefined);
@@ -122,7 +143,7 @@ export function useAutoSave(): UseAutoSaveResult {
       if (!persistableChanged) return;
 
       lastSeenRef.current = {
-        elements,
+        elementsFingerprint: fp,
         filesCount,
         bgColor: appState.viewBackgroundColor,
         gridSize: appState.gridSize as number | null | undefined,

@@ -122,6 +122,29 @@ export const ImportIcon: FC<IconProps> = (p) => (
 );
 
 /**
+ * Magnifier — used in the command-palette search field. Slightly stubby
+ * handle to read as hand-drawn rather than a stock loupe.
+ */
+export const SearchIcon: FC<IconProps> = (p) => (
+  <svg {...base(p)}>
+    <circle cx="7" cy="7" r="4.2" />
+    <path d="M10.2 10.2 13.4 13.4" />
+  </svg>
+);
+
+/**
+ * Trash can — used for the "Delete current drawing" palette command. Lid +
+ * body, no inner ribs, to stay in the quiet two-line icon family.
+ */
+export const TrashIcon: FC<IconProps> = (p) => (
+  <svg {...base(p)}>
+    <path d="M3 4.4h10" />
+    <path d="M6.2 4.4V3.2c0-.4.3-.7.7-.7h2.2c.4 0 .7.3.7.7v1.2" />
+    <path d="M4.3 4.4 5 12.6c0 .5.4.9.9.9h4.2c.5 0 .9-.4.9-.9l.7-8.2" />
+  </svg>
+);
+
+/**
  * Update-available glyph: an upward arrow rising to a horizontal rail.
  * Reads as "elevate to the new version above current". Sits beside a
  * small accent dot in the topbar when an update is ready to install.

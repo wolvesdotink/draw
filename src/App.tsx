@@ -37,6 +37,7 @@ import { EmptyState } from "./components/EmptyState";
 import { NewItemDialog, type FolderChoice } from "./components/NewItemDialog";
 import { SidebarResizer } from "./components/SidebarResizer";
 import { UpdateButton } from "./components/UpdateButton";
+import { CommandPalette, type Command, type PaletteFile } from "./components/CommandPalette";
 import {
   FolderPlusIcon,
   ImportIcon,
@@ -44,11 +45,19 @@ import {
   PlusIcon,
   SidebarShowIcon,
   SunIcon,
+  TrashIcon,
 } from "./components/icons";
-import { useFileTree, ensureDrawingsRoot, findNode, flattenDirs } from "./hooks/useFileTree";
+import {
+  useFileTree,
+  ensureDrawingsRoot,
+  findNode,
+  flattenDirs,
+  flattenFiles,
+} from "./hooks/useFileTree";
 import { useActiveFile } from "./hooks/useActiveFile";
 import { useAutoSave } from "./hooks/useAutoSave";
 import { useDragDrop } from "./hooks/useDragDrop";
+import { useDrawingIndex } from "./hooks/useDrawingIndex";
 import { useImportFlow } from "./hooks/useImportFlow";
 import { useUpdater } from "./hooks/useUpdater";
 import { sweepStaleTmp, exists } from "./lib/fs";
@@ -59,7 +68,7 @@ import {
   type AppPersistedState,
   type Theme,
 } from "./lib/state";
-import { DRAWINGS_DIR, basename, stripExt, toAppDataPath } from "./lib/paths";
+import { DRAWINGS_DIR, basename, parentRel, stripExt, toAppDataPath } from "./lib/paths";
 import { useViewport } from "./lib/platform";
 import { useDialog } from "./hooks/useDialog";
 import "./styles/app.css";
@@ -109,6 +118,8 @@ function App() {
    * preference. On wide viewports this state is unused.
    */
   const [compactDrawerOpen, setCompactDrawerOpen] = useState(false);
+  /** ⌘K command palette open state. NOT persisted. */
+  const [paletteOpen, setPaletteOpen] = useState(false);
 
   // Live viewport zone (compact / regular / wide). Drives sidebar drawer
   // mode on compact (iPhone, iPad Slide Over, half-screen Split View).
@@ -129,6 +140,10 @@ function App() {
   const persistedStateRef = useRef<AppPersistedState | null>(null);
   const activeFileRef = useRef(activeFile.active);
   activeFileRef.current = activeFile.active;
+  // Latest palette-open flag, read from the capture-phase key listener and the
+  // global-shortcut handler without re-binding them on every toggle.
+  const paletteOpenRef = useRef(false);
+  paletteOpenRef.current = paletteOpen;
 
   // ---------- Persisted state mutation helper ----------
   const updatePersistedState = useCallback((patch: Partial<AppPersistedState>) => {
@@ -412,10 +427,126 @@ function App() {
     }
   }, [activeFile, autoSave, fileTree, updatePersistedState, dialog]);
 
+  // ---------- Command palette (⌘K) ----------
+  // Resolved here (not in the render block) so the command list below can read
+  // the live theme without a temporal-dead-zone hazard.
+  const theme: Theme = persistedState?.theme ?? "light";
+
+  // True while another modal owns the foreground — keeps ⌘K from opening the
+  // palette behind a dialog. Read from the capture-phase listener via ref.
+  const blockPaletteRef = useRef(false);
+  blockPaletteRef.current = newDrawingDialogOpen || newFolderDialogOpen || importFlow.isOpen;
+
+  // Flat list of every drawing — feeds the palette's file switcher and the
+  // content index keyed by the same rel paths.
+  const paletteFiles = useMemo<PaletteFile[]>(
+    () =>
+      flattenFiles(fileTree.tree).map((node) => ({
+        path: node.path,
+        name: stripExt(node.name),
+        dir: parentRel(node.path),
+      })),
+    [fileTree.tree],
+  );
+
+  // Lazy, mtime-cached full-text index over drawing contents. Built on palette
+  // open (see CommandPalette); idle otherwise.
+  const drawingIndex = useDrawingIndex(paletteFiles);
+
+  const paletteCommands = useMemo<Command[]>(() => {
+    const cmds: Command[] = [
+      {
+        id: "new-drawing",
+        title: "New drawing",
+        hint: "⌘N",
+        keywords: "create file sketch canvas",
+        icon: <PlusIcon size={15} />,
+        run: () => setNewDrawingDialogOpen(true),
+      },
+      {
+        id: "new-folder",
+        title: "New folder",
+        hint: "⌘⇧N",
+        keywords: "create directory group",
+        icon: <FolderPlusIcon size={15} />,
+        run: () => setNewFolderDialogOpen(true),
+      },
+      {
+        id: "import",
+        title: "Import drawing",
+        hint: "⌘I",
+        keywords: "open excalidraw file load from disk",
+        icon: <ImportIcon size={15} />,
+        run: () => {
+          void importFlow.start();
+        },
+      },
+      {
+        id: "toggle-theme",
+        title: theme === "light" ? "Switch to dark mode" : "Switch to light mode",
+        keywords: "theme appearance dark light color mode",
+        icon: theme === "light" ? <MoonIcon size={15} /> : <SunIcon size={15} />,
+        run: handleToggleTheme,
+      },
+      {
+        id: "toggle-sidebar",
+        title: "Toggle sidebar",
+        hint: "⌘\\",
+        keywords: "files tree panel drawer show hide",
+        icon: <SidebarShowIcon size={15} />,
+        run: handleToggleSidebar,
+      },
+    ];
+    if (activeFile.active) {
+      cmds.push({
+        id: "delete-current",
+        title: "Delete current drawing",
+        hint: "⌘⌫",
+        keywords: "remove trash erase",
+        icon: <TrashIcon size={15} />,
+        run: () => {
+          void handleDeleteActive();
+        },
+      });
+    }
+    return cmds;
+  }, [
+    theme,
+    activeFile.active,
+    handleToggleTheme,
+    handleToggleSidebar,
+    handleDeleteActive,
+    importFlow.start,
+  ]);
+
+  // ⌘K / ⌘P — toggle the palette. Registered in the capture phase so it
+  // preempts Excalidraw's own ⌘K (add-link) before the event reaches the
+  // canvas. While the palette is open it always toggles closed; while closed it
+  // defers to any other open modal.
+  useEffect(() => {
+    if (bootStatus !== "ready") return;
+    const onKey = (e: KeyboardEvent) => {
+      const cmd = e.metaKey || e.ctrlKey;
+      if (!cmd || e.shiftKey || e.altKey) return;
+      if (e.key === "k" || e.key === "K" || e.key === "p" || e.key === "P") {
+        if (!paletteOpenRef.current && blockPaletteRef.current) return;
+        e.preventDefault();
+        e.stopPropagation();
+        setPaletteOpen((open) => !open);
+      }
+    };
+    window.addEventListener("keydown", onKey, true);
+    return () => {
+      window.removeEventListener("keydown", onKey, true);
+    };
+  }, [bootStatus]);
+
   // ---------- Keyboard shortcuts ----------
   useEffect(() => {
     if (bootStatus !== "ready") return;
     const onKey = (e: KeyboardEvent) => {
+      // The palette owns the keyboard while it's open (it handles its own keys).
+      if (paletteOpenRef.current) return;
       // Use metaKey on macOS; on Linux/Win we'd swap to ctrlKey but this is a macOS-targeted build.
       const cmd = e.metaKey || e.ctrlKey;
       if (!cmd) return;
@@ -510,7 +641,6 @@ function App() {
     );
   }
 
-  const theme: Theme = persistedState?.theme ?? "light";
   const persistedWidth = persistedState?.sidebarWidth ?? 260;
   const sidebarWidth = liveSidebarWidth ?? persistedWidth;
   // On compact viewports the sidebar is an overlay drawer (Phase 6) driven
@@ -732,6 +862,19 @@ function App() {
       )}
 
       {importFlow.dialogs}
+
+      {paletteOpen && (
+        <CommandPalette
+          commands={paletteCommands}
+          files={paletteFiles}
+          searchContent={drawingIndex.search}
+          prepareIndex={drawingIndex.refresh}
+          onOpenFile={(rel) => {
+            void handleSelectFile(rel);
+          }}
+          onClose={() => setPaletteOpen(false)}
+        />
+      )}
     </div>
   );
 }

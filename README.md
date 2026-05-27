@@ -33,12 +33,18 @@ macOS shell that gets out of the way.
 - **Sidebar file tree.** Folders, nested folders, drag-and-drop to
   reorganize, in-place rename, delete. Resizable, collapsible, and it
   remembers what you had open.
+- **Command palette & in-drawing search.** `⌘K` opens a palette that
+  fuzzy-finds any drawing by name, runs any app command (new, import,
+  theme, …), and does full-text search _inside_ your drawings — it reads
+  the text and frame labels on the canvas, so you can jump straight to the
+  sketch where you wrote "rate limiter". Built lazily and cached by mtime,
+  so it stays out of the way until you summon it.
 - **Drop to import.** Drag a `.excalidraw` file from Finder onto the
   window — the import flow asks where to put it and detects overwrites.
 - **Light & dark.** A single toggle in the topbar. Pure white or pure
   graphite — the canvas matches.
-- **Keyboard-first.** `⌘N` new drawing · `⌘⇧N` new folder · `⌘I` import
-  · `⌘S` force-save · `⌘⌫` delete · `⌘\` toggle sidebar.
+- **Keyboard-first.** `⌘K` command palette · `⌘N` new drawing · `⌘⇧N` new
+  folder · `⌘I` import · `⌘S` force-save · `⌘⌫` delete · `⌘\` toggle sidebar.
 - **Silent auto-update.** Checks for new releases a few seconds after
   launch, signed with the Tauri minisign key. The user always confirms
   the restart — your in-flight canvas is never yanked out from under you.

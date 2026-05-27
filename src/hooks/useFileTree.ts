@@ -295,3 +295,15 @@ export function flattenDirs(tree: TreeNode[], out: TreeNode[] = []): TreeNode[] 
   }
   return out;
 }
+
+/** Flatten every file node in the tree into a flat list. Used by the palette. */
+export function flattenFiles(tree: TreeNode[], out: TreeNode[] = []): TreeNode[] {
+  for (const node of tree) {
+    if (node.kind === "file") {
+      out.push(node);
+    } else if (node.children) {
+      flattenFiles(node.children, out);
+    }
+  }
+  return out;
+}

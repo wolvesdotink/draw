@@ -49,12 +49,7 @@ const TOPBAR_BTN =
 /** Repo releases page — manual-DMG fallback when the in-app updater fails. */
 const RELEASES_URL = "https://github.com/wolvesdotink/draw/releases/latest";
 
-export function UpdateButton({
-  state,
-  dismissed,
-  onInstall,
-  onRestart,
-}: Props) {
+export function UpdateButton({ state, dismissed, onInstall, onRestart }: Props) {
   // Anchor + open state for the brutal popover that surfaces under the
   // error icon. Scoped here because no other component needs to know
   // about it; lifting it up would just create indirection.
@@ -66,10 +61,7 @@ export function UpdateButton({
   useEffect(() => {
     if (!errorOpen) return;
     const onMouseDown = (e: MouseEvent) => {
-      if (
-        errorWrapRef.current &&
-        !errorWrapRef.current.contains(e.target as Node)
-      ) {
+      if (errorWrapRef.current && !errorWrapRef.current.contains(e.target as Node)) {
         setErrorOpen(false);
       }
     };
@@ -110,10 +102,7 @@ export function UpdateButton({
         <UpdateIcon size={15} />
         {/* Accent dot, top-right of the button — a hard 5×5 black square so
             it reads as a brutalist mark rather than a soft notification dot. */}
-        <span
-          aria-hidden
-          className="absolute top-[6px] right-[5px] w-[5px] h-[5px] bg-text"
-        />
+        <span aria-hidden className="absolute top-[6px] right-[5px] w-[5px] h-[5px] bg-text" />
       </button>
     );
   }
@@ -187,10 +176,7 @@ export function UpdateButton({
           <UpdateIcon size={15} />
           {/* Red accent dot — same hard 5×5 square as the available state,
               recoloured to the danger token to read as an error mark. */}
-          <span
-            aria-hidden
-            className="absolute top-[6px] right-[5px] w-[5px] h-[5px] bg-danger"
-          />
+          <span aria-hidden className="absolute top-[6px] right-[5px] w-[5px] h-[5px] bg-danger" />
         </button>
 
         {errorOpen && (

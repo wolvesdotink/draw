@@ -52,7 +52,10 @@ export async function remove(path: string, opts?: { recursive?: boolean }): Prom
 }
 
 export async function rename(from: string, to: string): Promise<void> {
-  await fsRename(from, to, { oldPathBaseDir: BaseDirectory.AppData, newPathBaseDir: BaseDirectory.AppData });
+  await fsRename(from, to, {
+    oldPathBaseDir: BaseDirectory.AppData,
+    newPathBaseDir: BaseDirectory.AppData,
+  });
 }
 
 export async function readDir(path: string): Promise<DirEntry[]> {

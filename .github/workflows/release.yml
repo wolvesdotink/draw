@@ -4,8 +4,14 @@
 # =============================================================================
 #
 # TRIGGERS
-#   - push to a tag matching `v*.*.*` (e.g. v0.2.0)        → publish release
-#   - workflow_dispatch (manual run from the Actions tab)  → publish draft
+#   - push to a version tag `v*` (e.g. v0.2.0 or v0.2.1-beta.1) → publish release
+#   - workflow_dispatch (manual run from the Actions tab)       → draft only
+#
+# CHANNELS
+#   A tag containing `-beta.` publishes as a GitHub prerelease and also pushes
+#   a rolling `beta.json` to the `manifests` branch. Plain `vX.Y.Z` tags are
+#   stable. A prerelease is never GitHub's "latest", so the in-app updater
+#   (reads /releases/latest/.../latest.json) only ever sees stable releases.
 #
 # WHAT IT BUILDS
 #   - draw_<version>_universal.dmg           (Apple Silicon + Intel fat binary)
@@ -49,7 +55,10 @@ name: release
 on:
   push:
     tags:
-      - "v*.*.*"
+      # `v*` (not `v*.*.*`) so we also match prerelease tags like
+      # `v0.2.10-beta.1`. Whether a run publishes as prerelease or stable is
+      # decided by the `tagmeta` step below from the tag itself.
+      - "v*"
   workflow_dispatch:
 
 # Cancel in-flight runs on the same ref so a quick re-tag doesn't queue duplicates.
@@ -70,6 +79,10 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          # Full history + tags so "Generate release notes" can
+          # `git log <prev-stable>..<tag>` and resolve the previous stable tag.
+          fetch-depth: 0
 
       - name: Setup Node 20
         uses: actions/setup-node@v4
@@ -260,11 +273,74 @@ jobs:
 
           echo "::notice::DMG volume icon installed and re-notarized: $DMG"
 
+      # Tags shaped `vX.Y.Z-beta.N` ship to the beta channel; everything else
+      # (`vX.Y.Z`) is a stable release. Downstream steps read this to flip the
+      # `prerelease` flag and to decide whether to push the rolling beta
+      # manifest. A prerelease is never GitHub's "latest", so stable users on
+      # the /releases/latest/ endpoint are never offered a beta.
+      - name: Detect channel from tag
+        id: tagmeta
+        run: |
+          TAG="${GITHUB_REF##*/}"
+          if [[ "$TAG" == *"-beta."* ]]; then
+            echo "prerelease=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "prerelease=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      # Build a short changelog from commit subjects between the previous
+      # *stable* tag and this one. Both stable and beta releases diff against
+      # the last stable so a beta shows the cumulative delta queued for the
+      # next stable. `chore: bump version` commits are skipped (they mark the
+      # release, not a change in it). Consumed by Stage (injected into
+      # latest.json) and by Publish (the GitHub Release body).
+      - name: Generate release notes
+        id: notes
+        run: |
+          set -euo pipefail
+          TAG="${GITHUB_REF##*/}"
+
+          PREV=$(git tag --list 'v*' --sort=-v:refname \
+                  | grep -v -- '-beta\.' \
+                  | grep -v -Fx "$TAG" \
+                  | head -n1 || echo "")
+
+          if [[ -z "$PREV" ]]; then
+            BODY="Initial release."
+          else
+            COMMITS=$(git log "${PREV}..${TAG}" \
+                        --no-merges \
+                        --pretty=format:'- %s' \
+                      | grep -v '^- chore: bump version' || true)
+            if [[ -z "$COMMITS" ]]; then
+              BODY="Maintenance release."
+            else
+              COMPARE="https://github.com/${GITHUB_REPOSITORY}/compare/${PREV}...${TAG}"
+              BODY=$(printf '%s\n\n**Full changelog:** %s' "$COMMITS" "$COMPARE")
+            fi
+          fi
+
+          # GITHUB_OUTPUT's heredoc form is the only safe way to pass
+          # newline-containing values to later steps.
+          {
+            echo "body<<NOTES_EOF"
+            echo "$BODY"
+            echo "NOTES_EOF"
+          } >> "$GITHUB_OUTPUT"
+
+          echo "----- generated notes -----"
+          echo "$BODY"
+          echo "---------------------------"
+
       # Stage every release asset under dist/ so the publish step has one
       # place to look. Also generates latest.json (the updater manifest)
       # since we are no longer using tauri-action's publish flow.
       - name: Stage release assets
         id: stage
+        env:
+          # Pass the generated notes via env (not inlined in the script) so a
+          # stray quote in a commit subject can't break the shell string.
+          NOTES: ${{ steps.notes.outputs.body }}
         run: |
           set -euo pipefail
           BUNDLE=src-tauri/target/universal-apple-darwin/release/bundle
@@ -291,33 +367,46 @@ jobs:
           PUB_DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
           UPDATER_URL="https://github.com/${REPO}/releases/download/v${VERSION}/draw.app.tar.gz"
 
-          cat > dist/latest.json <<EOF
-          {
-            "version": "${VERSION}",
-            "notes": "See the release page for details.",
-            "pub_date": "${PUB_DATE}",
-            "platforms": {
-              "darwin-x86_64":  { "signature": "${SIG}", "url": "${UPDATER_URL}" },
-              "darwin-aarch64": { "signature": "${SIG}", "url": "${UPDATER_URL}" }
-            }
-          }
-          EOF
+          # jq (preinstalled on macos-latest) handles JSON escaping for the
+          # multi-line notes so newlines/quotes/backslashes from commit
+          # messages can't break the manifest. NOTES comes from the step env.
+          jq -n \
+            --arg version "${VERSION}" \
+            --arg notes "$NOTES" \
+            --arg pub_date "${PUB_DATE}" \
+            --arg sig "${SIG}" \
+            --arg url "${UPDATER_URL}" \
+            '{
+               version: $version,
+               notes: $notes,
+               pub_date: $pub_date,
+               platforms: {
+                 "darwin-x86_64":  { signature: $sig, url: $url },
+                 "darwin-aarch64": { signature: $sig, url: $url }
+               }
+             }' > dist/latest.json
 
           echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
           ls -la dist/
 
-      # One atomic API call: create the release with every asset in place.
-      # Works correctly under GitHub's Immutable Releases (the release is
-      # frozen at creation time, but it's already complete when frozen).
-      - name: Publish GitHub Release
+      # Two-step publish for GitHub's Immutable Releases: under that setting a
+      # release freezes the moment it's published, so any in-flight asset
+      # upload afterward fails. We create the release as a draft so softprops
+      # can upload every asset, then flip the draft off in a separate step.
+      # workflow_dispatch runs deliberately stop at the draft for human review.
+      - name: Publish GitHub Release (draft)
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v${{ steps.stage.outputs.version }}
           name: draw v${{ steps.stage.outputs.version }}
-          draft: ${{ github.event_name == 'workflow_dispatch' }}
-          prerelease: false
+          draft: true
+          prerelease: ${{ steps.tagmeta.outputs.prerelease }}
           fail_on_unmatched_files: true
           body: |
+            ${{ steps.notes.outputs.body }}
+
+            ---
+
             Download `draw.dmg` below.
 
             **First launch on a clean Mac:** the app is signed and notarized,
@@ -333,3 +422,53 @@ jobs:
             dist/draw.app.tar.gz
             dist/draw.app.tar.gz.sig
             dist/latest.json
+
+      # Flip the draft to published. Only runs for tag-push events;
+      # workflow_dispatch runs stop at the draft above so a human can review
+      # before publishing.
+      - name: Publish draft (tag-push only)
+        if: github.event_name == 'push'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release edit "v${{ steps.stage.outputs.version }}" \
+            --repo "$GITHUB_REPOSITORY" \
+            --draft=false
+
+      # Beta channel: publish the manifest to a dedicated `manifests` branch
+      # served via raw.githubusercontent.com. This is forward-compatible
+      # infrastructure — draw's in-app updater currently consumes only the
+      # stable channel (releases/latest/.../latest.json), so nothing reads
+      # beta.json yet. When a Beta/Stable toggle is added later, point a beta
+      # endpoint at:
+      #   https://raw.githubusercontent.com/<repo>/manifests/beta.json
+      #
+      # workflow_dispatch runs intentionally skip this push so a human can
+      # review the draft release before the beta channel switches over.
+      - name: Publish beta manifest to manifests branch
+        if: steps.tagmeta.outputs.prerelease == 'true' && github.event_name == 'push'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          WORK=$(mktemp -d)
+          git clone --quiet --depth 1 --branch manifests \
+            "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" \
+            "$WORK" 2>/dev/null || {
+              # Branch doesn't exist yet — bootstrap as orphan.
+              git clone --quiet --depth 1 \
+                "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" \
+                "$WORK"
+              git -C "$WORK" switch --orphan manifests
+              git -C "$WORK" rm -rf . >/dev/null 2>&1 || true
+            }
+          cp dist/latest.json "$WORK/beta.json"
+          git -C "$WORK" config user.name  "github-actions[bot]"
+          git -C "$WORK" config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git -C "$WORK" add beta.json
+          if git -C "$WORK" diff --cached --quiet; then
+            echo "beta.json unchanged; nothing to push"
+          else
+            git -C "$WORK" commit -m "release: beta manifest for v${{ steps.stage.outputs.version }}"
+            git -C "$WORK" push origin manifests
+          fi

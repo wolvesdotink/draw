@@ -23,13 +23,7 @@
  */
 import { useCallback, useEffect, useRef, useState } from "react";
 
-type UpdaterStatus =
-  | "idle"
-  | "checking"
-  | "available"
-  | "downloading"
-  | "ready"
-  | "error";
+type UpdaterStatus = "idle" | "checking" | "available" | "downloading" | "ready" | "error";
 
 export type UpdaterState = {
   status: UpdaterStatus;

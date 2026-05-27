@@ -77,5 +77,5 @@ export function ensureExt(name: string): string {
 export function isValidName(name: string): boolean {
   if (!name || name.length > 200) return false;
   if (name.startsWith(".")) return false;
-  return !/[\/\\\0]/.test(name);
+  return !/[/\\\0]/.test(name);
 }

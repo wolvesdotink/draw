@@ -20,9 +20,7 @@ export async function pickExcalidrawFile(): Promise<string | null> {
   const picked = await open({
     multiple: false,
     directory: false,
-    filters: [
-      { name: "Excalidraw", extensions: ["excalidraw", "json"] },
-    ],
+    filters: [{ name: "Excalidraw", extensions: ["excalidraw", "json"] }],
   });
   // Tauri 2 returns a string for single-file pick, null when cancelled.
   if (picked === null) return null;
@@ -52,9 +50,7 @@ export function basenameFromAbsPath(absPath: string): string {
   return base.slice(0, dotIdx);
 }
 
-export type ValidationResult =
-  | { ok: true }
-  | { ok: false; error: string };
+export type ValidationResult = { ok: true } | { ok: false; error: string };
 
 /**
  * Validate the contents of a picked file are a parseable Excalidraw drawing.
@@ -81,8 +77,7 @@ export function validateExcalidrawJson(text: string): ValidationResult {
   if (obj.type === "excalidrawlib") {
     return {
       ok: false,
-      error:
-        "That's an Excalidraw library file. Only drawings can be imported.",
+      error: "That's an Excalidraw library file. Only drawings can be imported.",
     };
   }
   if (obj.type !== "excalidraw") {

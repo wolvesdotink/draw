@@ -16,7 +16,23 @@
     "tauri": "tauri",
     "bump:patch": "bash scripts/bump.sh patch",
     "bump:minor": "bash scripts/bump.sh minor",
-    "bump:major": "bash scripts/bump.sh major"
+    "bump:major": "bash scripts/bump.sh major",
+    "bump:patch:beta": "bash scripts/bump.sh patch --beta",
+    "bump:minor:beta": "bash scripts/bump.sh minor --beta",
+    "bump:major:beta": "bash scripts/bump.sh major --beta",
+    "bump:beta": "bash scripts/bump.sh beta",
+    "bump:stable": "bash scripts/bump.sh stable",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "rust:fmt": "cargo fmt --manifest-path src-tauri/Cargo.toml --all",
+    "rust:fmt:check": "cargo fmt --manifest-path src-tauri/Cargo.toml --all --check",
+    "rust:clippy": "cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets -- -D warnings",
+    "rust:test": "cargo test --manifest-path src-tauri/Cargo.toml",
+    "test": "pnpm run rust:test",
+    "verify": "pnpm run rust:fmt:check && pnpm run rust:clippy && pnpm run typecheck && pnpm run lint && pnpm run format:check && pnpm run rust:test"
   },
   "dependencies": {
     "@excalidraw/excalidraw": "0.18.1",
@@ -30,13 +46,20 @@
     "react-dom": "^18.3.1"
   },
   "devDependencies": {
+    "@eslint/js": "^9.39.4",
     "@tailwindcss/vite": "^4.2.4",
     "@tauri-apps/cli": "^2",
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.1",
     "@vitejs/plugin-react": "^4.6.0",
+    "eslint": "^9.39.4",
+    "eslint-config-prettier": "^9.1.2",
+    "eslint-plugin-react-hooks": "^5.2.0",
+    "eslint-plugin-react-refresh": "^0.4.26",
+    "prettier": "^3",
     "tailwindcss": "^4.2.4",
     "typescript": "~5.8.3",
+    "typescript-eslint": "^8",
     "vite": "^7.0.4"
   }
 }

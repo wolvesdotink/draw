@@ -45,12 +45,7 @@ import {
   SidebarShowIcon,
   SunIcon,
 } from "./components/icons";
-import {
-  useFileTree,
-  ensureDrawingsRoot,
-  findNode,
-  flattenDirs,
-} from "./hooks/useFileTree";
+import { useFileTree, ensureDrawingsRoot, findNode, flattenDirs } from "./hooks/useFileTree";
 import { useActiveFile } from "./hooks/useActiveFile";
 import { useAutoSave } from "./hooks/useAutoSave";
 import { useDragDrop } from "./hooks/useDragDrop";
@@ -332,10 +327,7 @@ function App() {
     [activeFile, autoSave, updatePersistedState, dialog],
   );
 
-  const existsRel = useCallback(
-    async (rel: string) => exists(toAppDataPath(rel)),
-    [],
-  );
+  const existsRel = useCallback(async (rel: string) => exists(toAppDataPath(rel)), []);
 
   const importFlow = useImportFlow({
     importFile: fileTree.importFile,
@@ -575,9 +567,7 @@ function App() {
             }`}
             title={activeFile.active?.path ?? undefined}
           >
-            {activeFile.active
-              ? stripExt(basename(activeFile.active.path))
-              : "— NO FILE —"}
+            {activeFile.active ? stripExt(basename(activeFile.active.path)) : "— NO FILE —"}
           </span>
         </div>
         <div data-tauri-drag-region className="flex items-center gap-0 h-full">
@@ -665,9 +655,7 @@ function App() {
                 onActiveFileRemoved={handleActiveFileRemoved}
                 onActiveFileMoved={handleActiveFileMoved}
                 initialExpanded={persistedState?.expandedFolders ?? {}}
-                onExpandedChange={(expandedFolders) =>
-                  updatePersistedState({ expandedFolders })
-                }
+                onExpandedChange={(expandedFolders) => updatePersistedState({ expandedFolders })}
                 theme={theme}
               />
             </div>
@@ -690,10 +678,7 @@ function App() {
               onChange={autoSave.onChange}
             />
           ) : (
-            <EmptyState
-              hasFiles={hasFiles}
-              onCreateFirst={() => setNewDrawingDialogOpen(true)}
-            />
+            <EmptyState hasFiles={hasFiles} onCreateFirst={() => setNewDrawingDialogOpen(true)} />
           )}
         </main>
       </div>
@@ -711,10 +696,7 @@ function App() {
           }}
           aria-hidden={sidebarCollapsed}
         >
-          <div
-            className="sidebar-drawer-panel"
-            onClick={(e) => e.stopPropagation()}
-          >
+          <div className="sidebar-drawer-panel" onClick={(e) => e.stopPropagation()}>
             <Sidebar
               fileTree={fileTree}
               activePath={activeFile.active?.path ?? null}
@@ -722,9 +704,7 @@ function App() {
               onActiveFileRemoved={handleActiveFileRemoved}
               onActiveFileMoved={handleActiveFileMoved}
               initialExpanded={persistedState?.expandedFolders ?? {}}
-              onExpandedChange={(expandedFolders) =>
-                updatePersistedState({ expandedFolders })
-              }
+              onExpandedChange={(expandedFolders) => updatePersistedState({ expandedFolders })}
               theme={theme}
             />
           </div>

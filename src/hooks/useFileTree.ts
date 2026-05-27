@@ -198,9 +198,7 @@ export function useFileTree(): UseFileTreeResult {
       const isDir = !rel.endsWith(".excalidraw");
       if (isDir) {
         if (newParentDirRel === rel || newParentDirRel.startsWith(`${rel}/`)) {
-          throw new Error(
-            "Can't move a folder into itself or one of its subfolders.",
-          );
+          throw new Error("Can't move a folder into itself or one of its subfolders.");
         }
       }
 

@@ -206,18 +206,18 @@ Releases are produced by GitHub Actions. The maintainer never builds a
 ### One-time setup (do this once, before the first release)
 
 1. **Add the Apple Developer ID + Tauri updater secrets to GitHub:**
-   Settings → Secrets and variables → Actions → *New repository secret*
+   Settings → Secrets and variables → Actions → _New repository secret_
 
-   | Secret | Value |
-   |---|---|
-   | `APPLE_CERTIFICATE` | base64 of your Developer ID `.p12` |
-   | `APPLE_CERTIFICATE_PASSWORD` | password for that `.p12` |
-   | `APPLE_SIGNING_IDENTITY` | `Developer ID Application: Your Name (TEAMID)` |
-   | `APPLE_ID` | your Apple ID email |
-   | `APPLE_PASSWORD` | app-specific password (created at appleid.apple.com → Sign-In and Security → App-Specific Passwords) |
-   | `APPLE_TEAM_ID` | 10-character team id |
-   | `TAURI_SIGNING_PRIVATE_KEY` | contents of `.secrets/updater.key` (this file is gitignored — keep your local copy safe) |
-   | `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` | blank if generated without password |
+   | Secret                               | Value                                                                                                |
+   | ------------------------------------ | ---------------------------------------------------------------------------------------------------- |
+   | `APPLE_CERTIFICATE`                  | base64 of your Developer ID `.p12`                                                                   |
+   | `APPLE_CERTIFICATE_PASSWORD`         | password for that `.p12`                                                                             |
+   | `APPLE_SIGNING_IDENTITY`             | `Developer ID Application: Your Name (TEAMID)`                                                       |
+   | `APPLE_ID`                           | your Apple ID email                                                                                  |
+   | `APPLE_PASSWORD`                     | app-specific password (created at appleid.apple.com → Sign-In and Security → App-Specific Passwords) |
+   | `APPLE_TEAM_ID`                      | 10-character team id                                                                                 |
+   | `TAURI_SIGNING_PRIVATE_KEY`          | contents of `.secrets/updater.key` (this file is gitignored — keep your local copy safe)             |
+   | `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` | blank if generated without password                                                                  |
 
    Encoding the `.p12` for `APPLE_CERTIFICATE`:
 
@@ -263,11 +263,11 @@ Total runtime is about 12–18 minutes, mostly Apple notarization.
 These URLs are stable forever — they always point at the current latest
 release:
 
-| What | URL |
-|---|---|
-| **Direct DMG download** (use this on your "Download" button) | `https://github.com/wolvesdotink/draw/releases/latest/download/draw.dmg` |
-| Updater manifest (the in-app updater hits this) | `https://github.com/wolvesdotink/draw/releases/latest/download/latest.json` |
-| Release page (changelog, all assets) | `https://github.com/wolvesdotink/draw/releases/latest` |
+| What                                                         | URL                                                                         |
+| ------------------------------------------------------------ | --------------------------------------------------------------------------- |
+| **Direct DMG download** (use this on your "Download" button) | `https://github.com/wolvesdotink/draw/releases/latest/download/draw.dmg`    |
+| Updater manifest (the in-app updater hits this)              | `https://github.com/wolvesdotink/draw/releases/latest/download/latest.json` |
+| Release page (changelog, all assets)                         | `https://github.com/wolvesdotink/draw/releases/latest`                      |
 
 GitHub auto-redirects `releases/latest/download/<filename>` to the asset
 of that name in the most recent non-prerelease.
@@ -288,13 +288,13 @@ The app checks for updates 4 seconds after launch (silent — no UI flash
 on cold-start). When the updater finds a newer version on the manifest
 endpoint, the topbar grows a small `↑` button with an accent dot.
 
-| Topbar state | Means |
-|---|---|
-| (hidden) | Up to date or check still pending |
-| `↑` + dot | Update available — click to download + install |
-| `[ ## % ]` | Currently downloading / installing |
-| `⟲ RESTART` (inverted) | Install complete — click to relaunch |
-| `!` (red) | Check or install failed — click to retry |
+| Topbar state           | Means                                          |
+| ---------------------- | ---------------------------------------------- |
+| (hidden)               | Up to date or check still pending              |
+| `↑` + dot              | Update available — click to download + install |
+| `[ ## % ]`             | Currently downloading / installing             |
+| `⟲ RESTART` (inverted) | Install complete — click to relaunch           |
+| `!` (red)              | Check or install failed — click to retry       |
 
 The updater never auto-restarts the app. The user always confirms by
 clicking `RESTART`, so any in-flight canvas state is safe.

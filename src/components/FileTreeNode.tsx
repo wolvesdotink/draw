@@ -21,13 +21,7 @@
 import { useMemo, type DragEvent, type FC, type MouseEvent } from "react";
 import type { TreeNode } from "../hooks/useFileTree";
 import { parentRel, stripExt } from "../lib/paths";
-import {
-  ChevronDown,
-  ChevronRight,
-  FolderIcon,
-  FolderOpenIcon,
-  NibIcon,
-} from "./icons";
+import { ChevronDown, ChevronRight, FolderIcon, FolderOpenIcon, NibIcon } from "./icons";
 
 interface FileTreeNodeProps {
   node: TreeNode;
@@ -183,11 +177,7 @@ export const FileTreeNode: FC<FileTreeNodeProps> = ({
     ? "bg-bg-active text-accent-text font-bold"
     : "bg-transparent text-text hover:bg-bg-hover";
   // Layered on top of base/active state during a drag.
-  const dragState = isBeingDragged
-    ? "opacity-40"
-    : isDropHover
-      ? "drop-target"
-      : "";
+  const dragState = isBeingDragged ? "opacity-40" : isDropHover ? "drop-target" : "";
 
   return (
     <li className="m-0 p-0" role="treeitem">

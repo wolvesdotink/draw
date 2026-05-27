@@ -1,0 +1,97 @@
+# =============================================================================
+# ci.yml — fast checks on every PR.
+# =============================================================================
+#
+# This pipeline gates merges. It is intentionally split from release.yml so
+# every PR runs the cheap, fast checks without dragging in the code-signing /
+# notarization machinery (which is slow and secret-gated).
+#
+# WHAT IT CHECKS
+#   - pnpm run typecheck        tsc --noEmit (strict)
+#   - pnpm run lint             eslint flat-config (React + TS)
+#   - pnpm run format:check     prettier --check
+#   - cargo fmt --check         formatting drift in Rust code
+#   - cargo clippy -D warnings  new lint warnings fail the build
+#   - cargo test                unit/integration tests for src-tauri
+#
+# RUNNER CHOICE
+#   macos-latest for both jobs: src-tauri builds the macOS Tauri app against
+#   the system WKWebView, so matching the release runner avoids Linux
+#   webkit2gtk system-dep wrangling. Node 20 + pnpm 10 mirror release.yml so
+#   local, CI, and release all agree on versions.
+# =============================================================================
+
+name: ci
+
+on:
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  frontend:
+    name: Frontend checks
+    runs-on: macos-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Setup pnpm 10
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+          run_install: false
+      - name: Resolve pnpm store path
+        id: pnpm-store
+        run: echo "path=$(pnpm store path --silent)" >> "$GITHUB_OUTPUT"
+      - name: Cache pnpm store
+        uses: actions/cache@v4
+        with:
+          path: ${{ steps.pnpm-store.outputs.path }}
+          key: ${{ runner.os }}-pnpm-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: ${{ runner.os }}-pnpm-
+      - name: Install JS dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Typecheck (tsc)
+        run: pnpm run typecheck
+      - name: ESLint
+        run: pnpm run lint
+      - name: Prettier check
+        run: pnpm run format:check
+
+  rust:
+    name: Rust checks
+    runs-on: macos-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      # Mirror release.yml's toolchain approach (stable via dtolnay), so CI and
+      # the release build agree on the compiler. clippy + rustfmt are the
+      # components the checks below need.
+      - name: Setup Rust (stable + clippy + rustfmt)
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy, rustfmt
+      - name: Cache cargo
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            src-tauri/target
+          key: ${{ runner.os }}-cargo-ci-${{ hashFiles('src-tauri/Cargo.lock') }}
+          restore-keys: ${{ runner.os }}-cargo-ci-
+      - name: Format check
+        run: cargo fmt --manifest-path src-tauri/Cargo.toml --all -- --check
+      - name: Clippy
+        run: cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets -- -D warnings
+      - name: Test
+        run: cargo test --manifest-path src-tauri/Cargo.toml

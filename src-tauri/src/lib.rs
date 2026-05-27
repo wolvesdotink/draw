@@ -81,9 +81,7 @@ pub fn run() {
                     .separator()
                     .quit()
                     .build()?;
-                let file_submenu = SubmenuBuilder::new(handle, "File")
-                    .close_window()
-                    .build()?;
+                let file_submenu = SubmenuBuilder::new(handle, "File").close_window().build()?;
                 let edit_submenu = SubmenuBuilder::new(handle, "Edit")
                     .undo()
                     .redo()

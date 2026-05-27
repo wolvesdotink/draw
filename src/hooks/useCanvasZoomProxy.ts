@@ -34,10 +34,7 @@
  *   newScroll = scroll + appLayer/oldZoom - appLayer/newZoom
  */
 import { useCallback, useEffect, useRef, useState } from "react";
-import type {
-  ExcalidrawImperativeAPI,
-  NormalizedZoomValue,
-} from "@excalidraw/excalidraw/types";
+import type { ExcalidrawImperativeAPI, NormalizedZoomValue } from "@excalidraw/excalidraw/types";
 
 const GESTURE_IDLE_MS = 120;
 const MIN_ZOOM = 0.1;
@@ -122,21 +119,14 @@ export function useCanvasZoomProxy(
       clearIdleTimer();
       const api = getAPIRef.current();
       if (api !== null && wrapperEl !== null && wrapperEl.isConnected) {
-        const targetZoom = Math.max(
-          MIN_ZOOM,
-          Math.min(MAX_ZOOM, startZoom * scale),
-        );
+        const targetZoom = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, startZoom * scale));
         const appLayerX = originClientX - startOffsetLeft;
         const appLayerY = originClientY - startOffsetTop;
         // `getStateForZoom` formula: keep the anchor (cursor) point fixed.
-        const baseScrollX =
-          startScrollX + appLayerX - appLayerX / startZoom;
-        const baseScrollY =
-          startScrollY + appLayerY - appLayerY / startZoom;
-        const newScrollX =
-          baseScrollX - (appLayerX - appLayerX / targetZoom);
-        const newScrollY =
-          baseScrollY - (appLayerY - appLayerY / targetZoom);
+        const baseScrollX = startScrollX + appLayerX - appLayerX / startZoom;
+        const baseScrollY = startScrollY + appLayerY - appLayerY / startZoom;
+        const newScrollX = baseScrollX - (appLayerX - appLayerX / targetZoom);
+        const newScrollY = baseScrollY - (appLayerY - appLayerY / targetZoom);
         api.updateScene({
           appState: {
             zoom: { value: targetZoom as NormalizedZoomValue },

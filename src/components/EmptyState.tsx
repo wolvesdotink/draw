@@ -45,7 +45,8 @@ export const EmptyState: FC<EmptyStateProps> = ({ hasFiles, onCreateFirst }) => 
           </h1>
           <div className="h-1 w-16 mx-auto bg-text mb-6" aria-hidden />
           <p className="m-0 mb-8 text-[13px] font-mono text-text-muted leading-relaxed">
-            A LOCAL SPACE FOR SKETCHES &amp; DIAGRAMS.<br />
+            A LOCAL SPACE FOR SKETCHES &amp; DIAGRAMS.
+            <br />
             FILES LIVE ON THIS MACHINE AS PLAIN{" "}
             <code className="font-mono text-[12px] text-text px-1 py-0.5 bg-bg border border-border">
               .excalidraw

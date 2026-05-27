@@ -78,7 +78,6 @@ export function useDragDrop({ onDrop, disabled }: UseDragDropArgs): void {
 
       if (matches.length === 0) {
         if (files.length > 0) {
-          // eslint-disable-next-line no-console
           console.debug(
             `[import] drop ignored — no .excalidraw files among ${files.length} dropped`,
           );
@@ -86,7 +85,6 @@ export function useDragDrop({ onDrop, disabled }: UseDragDropArgs): void {
         return;
       }
       if (matches.length > 1) {
-        // eslint-disable-next-line no-console
         console.info(
           `[import] taking first; ignored ${matches.length - 1} additional dropped file(s)`,
         );
@@ -98,7 +96,6 @@ export function useDragDrop({ onDrop, disabled }: UseDragDropArgs): void {
           const contents = await first.text();
           onDrop({ name: first.name, contents });
         } catch (err) {
-          // eslint-disable-next-line no-console
           console.error("[import] couldn't read dropped file:", err);
         }
       })();

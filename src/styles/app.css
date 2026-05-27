@@ -575,7 +575,8 @@ select:focus-visible,
 }
 
 @keyframes pulse-line {
-  0%, 100% {
+  0%,
+  100% {
     opacity: 0.25;
     transform: scaleX(0.6);
   }

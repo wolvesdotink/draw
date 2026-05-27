@@ -16,10 +16,7 @@
  */
 import { readTextFile, writeAtomic } from "./fs";
 import { toAppDataPath } from "./paths";
-import type {
-  ExcalidrawElement,
-  NonDeleted,
-} from "@excalidraw/excalidraw/element/types";
+import type { ExcalidrawElement, NonDeleted } from "@excalidraw/excalidraw/element/types";
 import type { AppState, BinaryFiles } from "@excalidraw/excalidraw/types";
 import type { Theme } from "./state";
 

@@ -1,35 +1,140 @@
 #!/usr/bin/env bash
+# bump.sh — bump draw's version across package.json, Cargo.toml, Cargo.lock,
+# tauri.conf.json, and the iOS Info.plist + project.yml, then commit, tag, and
+# push. Pushing the tag triggers the release workflow in
+# .github/workflows/release.yml.
+#
+# Stable bumps:
+#   bash scripts/bump.sh patch        # 0.2.9 → 0.2.10
+#   bash scripts/bump.sh minor        # 0.2.9 → 0.3.0
+#   bash scripts/bump.sh major        # 0.2.9 → 1.0.0
+#
+# Beta bumps (cuts a prerelease at the chosen level):
+#   bash scripts/bump.sh patch --beta # 0.2.9 → 0.2.10-beta.1
+#   bash scripts/bump.sh minor --beta # 0.2.9 → 0.3.0-beta.1
+#   bash scripts/bump.sh major --beta # 0.2.9 → 1.0.0-beta.1
+#
+# Next beta in current cycle (must already be on a -beta.N version):
+#   bash scripts/bump.sh beta         # 0.2.10-beta.1 → 0.2.10-beta.2
+#
+# Promote current beta to stable (strips -beta.N, keeps the X.Y.Z):
+#   bash scripts/bump.sh stable       # 0.2.10-beta.7 → 0.2.10
+#
+# Stripping the -beta.N suffix also happens automatically when you bump a
+# level: `bash scripts/bump.sh patch` from `0.2.10-beta.7` produces `0.2.11`,
+# not `0.2.10`. Use `stable` when you want to release the current beta as-is.
+#
+# iOS note: CFBundleShortVersionString / CFBundleVersion must be numeric
+# dotted (X.Y.Z) — a "-beta.N" suffix is not a valid CFBundleVersion. So the
+# iOS Info.plist + project.yml always track the *base* version with the suffix
+# stripped. A `beta`/`stable` bump leaves the base unchanged, so those files
+# are a no-op for prerelease churn; only level bumps move the iOS version.
+
 set -euo pipefail
 
-BUMP_TYPE="${1:-}"
-
 usage() {
-  echo "Usage: $0 [major|minor|patch]"
+  echo "Usage: $0 (major|minor|patch) [--beta]"
+  echo "       $0 beta"
+  echo "       $0 stable"
   exit 1
 }
 
-if [[ -z "$BUMP_TYPE" ]]; then usage; fi
-case "$BUMP_TYPE" in major|minor|patch) ;; *) usage ;; esac
+BUMP_TYPE=""
+BETA_FLAG=false
 
-# Ensure clean working tree
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    major|minor|patch|beta|stable)
+      if [[ -n "$BUMP_TYPE" ]]; then usage; fi
+      BUMP_TYPE="$1"
+      shift
+      ;;
+    --beta)
+      BETA_FLAG=true
+      shift
+      ;;
+    *)
+      usage
+      ;;
+  esac
+done
+
+if [[ -z "$BUMP_TYPE" ]]; then usage; fi
+
+# The `beta` subcommand bumps an existing -beta.N counter; `stable` strips
+# it; `--beta` is a flag for major/minor/patch that appends -beta.1 after
+# the level bump. None of them compose — combining would just be confusing.
+if [[ "$BUMP_TYPE" == "beta" && "$BETA_FLAG" == "true" ]]; then
+  echo "Error: the 'beta' subcommand does not accept --beta."
+  echo "Use 'beta' alone to advance the counter, or '<level> --beta' to start a new beta cycle."
+  exit 1
+fi
+if [[ "$BUMP_TYPE" == "stable" && "$BETA_FLAG" == "true" ]]; then
+  echo "Error: the 'stable' subcommand does not accept --beta."
+  echo "Use 'stable' alone to promote the current beta, or '<level> --beta' to start a new beta cycle."
+  exit 1
+fi
+
+# Ensure clean working tree.
 if ! git diff --quiet || ! git diff --cached --quiet; then
   echo "Error: working tree has uncommitted changes. Commit or stash them first."
   exit 1
 fi
 
-# Read current version from package.json
+# Read current version from package.json.
 CURRENT=$(node -p "require('./package.json').version")
 
-IFS='.' read -r MAJOR MINOR PATCH <<< "$CURRENT"
+# Parse current into base (X.Y.Z) + optional -beta.N. We support exactly the
+# shape `X.Y.Z` and `X.Y.Z-beta.N`; anything else means someone hand-edited
+# the file into a state we don't know how to advance, and we'd rather error
+# than silently produce a nonsense tag.
+if [[ "$CURRENT" =~ ^([0-9]+\.[0-9]+\.[0-9]+)-beta\.([0-9]+)$ ]]; then
+  BASE="${BASH_REMATCH[1]}"
+  BETA_N="${BASH_REMATCH[2]}"
+elif [[ "$CURRENT" =~ ^([0-9]+\.[0-9]+\.[0-9]+)$ ]]; then
+  BASE="${BASH_REMATCH[1]}"
+  BETA_N=""
+else
+  echo "Error: cannot parse current version '$CURRENT' (expected X.Y.Z or X.Y.Z-beta.N)."
+  exit 1
+fi
+
+IFS='.' read -r MAJOR MINOR PATCH <<< "$BASE"
 
 case "$BUMP_TYPE" in
-  major) MAJOR=$((MAJOR + 1)); MINOR=0; PATCH=0 ;;
-  minor) MINOR=$((MINOR + 1)); PATCH=0 ;;
-  patch) PATCH=$((PATCH + 1)) ;;
+  major) MAJOR=$((MAJOR + 1)); MINOR=0; PATCH=0; NEW="$MAJOR.$MINOR.$PATCH" ;;
+  minor) MINOR=$((MINOR + 1)); PATCH=0;          NEW="$MAJOR.$MINOR.$PATCH" ;;
+  patch) PATCH=$((PATCH + 1));                   NEW="$MAJOR.$MINOR.$PATCH" ;;
+  beta)
+    if [[ -z "$BETA_N" ]]; then
+      echo "Error: current version $CURRENT is not a beta."
+      echo "Use bump:patch:beta, bump:minor:beta, or bump:major:beta to start a beta cycle."
+      exit 1
+    fi
+    NEW_BETA=$((BETA_N + 1))
+    NEW="$BASE-beta.$NEW_BETA"
+    ;;
+  stable)
+    if [[ -z "$BETA_N" ]]; then
+      echo "Error: current version $CURRENT is not a beta — nothing to promote."
+      exit 1
+    fi
+    NEW="$BASE"
+    ;;
 esac
 
-NEW="$MAJOR.$MINOR.$PATCH"
+if [[ "$BUMP_TYPE" != "beta" ]] && $BETA_FLAG; then
+  NEW="${NEW}-beta.1"
+fi
+
 TAG="v$NEW"
+
+# The iOS files track the numeric base version only (see the iOS note above).
+# OLD_BASE is the base of the current version; NEW_BASE strips any -beta.N from
+# the new version. For `beta`/`stable` bumps these are equal (a no-op sed);
+# for level bumps they move together with the X.Y.Z.
+OLD_BASE="$BASE"
+NEW_BASE="${NEW%%-beta.*}"
 
 echo "Bumping $CURRENT → $NEW"
 
@@ -55,14 +160,14 @@ node -e "
   fs.writeFileSync('src-tauri/tauri.conf.json', JSON.stringify(c, null, 2) + '\n');
 "
 
-# iOS Info.plist (CFBundleShortVersionString + CFBundleVersion)
+# iOS Info.plist (CFBundleShortVersionString + CFBundleVersion) — base only
 PLIST="src-tauri/gen/apple/draw_iOS/Info.plist"
-sed -i '' "s/<string>$CURRENT<\/string>/<string>$NEW<\/string>/g" "$PLIST"
+sed -i '' "s/<string>$OLD_BASE<\/string>/<string>$NEW_BASE<\/string>/g" "$PLIST"
 
-# iOS project.yml — source-of-truth for regenerating the Xcode project
+# iOS project.yml — source-of-truth for regenerating the Xcode project (base only)
 PROJECT_YML="src-tauri/gen/apple/project.yml"
-sed -i '' -E "s/(CFBundleShortVersionString: )$CURRENT/\1$NEW/" "$PROJECT_YML"
-sed -i '' -E "s/(CFBundleVersion: \")$CURRENT(\")/\1$NEW\2/" "$PROJECT_YML"
+sed -i '' -E "s/(CFBundleShortVersionString: )$OLD_BASE/\1$NEW_BASE/" "$PROJECT_YML"
+sed -i '' -E "s/(CFBundleVersion: \")$OLD_BASE(\")/\1$NEW_BASE\2/" "$PROJECT_YML"
 
 # Refresh Cargo.lock so the draw package version matches Cargo.toml
 (cd src-tauri && cargo update -p draw --precise "$NEW")

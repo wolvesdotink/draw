@@ -1,0 +1,16 @@
+# Clippy knobs. Lint allow/deny lives at the crate root (lib.rs) so it
+# travels with the source, not the config.
+
+# Minimum supported Rust version — caps MSRV-aware clippy suggestions so they
+# don't recommend APIs newer than this floor. CI builds on stable (see
+# .github/workflows/{ci,release}.yml).
+msrv = "1.91"
+
+# Project conventions: brand / platform identifiers that aren't dictionary
+# words but shouldn't be flagged inside doc comments.
+doc-valid-idents = ["Excalidraw", "macOS", "iOS"]
+
+# Allow `.unwrap()` and `.expect()` in test code — "this must succeed"
+# assertions are idiomatic in test fixtures.
+allow-unwrap-in-tests = true
+allow-expect-in-tests = true

@@ -75,9 +75,7 @@ export const ConfirmDialog: FC<ConfirmDialogProps> = ({
             {subtitle}
           </p>
         )}
-        <p className="m-0 mb-6 text-[12.5px] leading-relaxed font-mono text-text">
-          {body}
-        </p>
+        <p className="m-0 mb-6 text-[12.5px] leading-relaxed font-mono text-text">{body}</p>
         <div className="flex flex-wrap items-center gap-2 justify-end">
           <button
             type="button"

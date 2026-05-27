@@ -86,19 +86,9 @@ export const NewItemDialog: FC<NewItemDialogProps> = ({
     }
   };
 
-  const title =
-    mode === "newFile"
-      ? "New drawing"
-      : mode === "newFolder"
-        ? "New folder"
-        : "Rename";
+  const title = mode === "newFile" ? "New drawing" : mode === "newFolder" ? "New folder" : "Rename";
 
-  const placeholder =
-    mode === "newFile"
-      ? "diagram"
-      : mode === "newFolder"
-        ? "ideas"
-        : "new name";
+  const placeholder = mode === "newFile" ? "diagram" : mode === "newFolder" ? "ideas" : "new name";
 
   const submitLabel = mode === "rename" ? "Rename" : "Create";
 
@@ -109,8 +99,7 @@ export const NewItemDialog: FC<NewItemDialogProps> = ({
     "border-2 border-border bg-bg text-text px-4 py-[8px] text-[12px] font-mono font-bold uppercase tracking-wider cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed";
 
   // Pick the right glyph
-  const TitleGlyph =
-    mode === "newFolder" ? FolderIcon : NibIcon;
+  const TitleGlyph = mode === "newFolder" ? FolderIcon : NibIcon;
 
   return (
     <div
@@ -122,8 +111,7 @@ export const NewItemDialog: FC<NewItemDialogProps> = ({
         if (e.target === e.currentTarget && !submitting) onCancel();
       }}
       style={{
-        background:
-          "color-mix(in srgb, var(--bg) 30%, rgba(0,0,0,0.65))",
+        background: "color-mix(in srgb, var(--bg) 30%, rgba(0,0,0,0.65))",
       }}
     >
       <form
@@ -182,7 +170,9 @@ export const NewItemDialog: FC<NewItemDialogProps> = ({
 
         {error && (
           <p className="mt-3 mb-0 text-[11px] font-mono uppercase tracking-wider text-danger flex items-start gap-1.5">
-            <span aria-hidden className="mt-[1px]">!</span>
+            <span aria-hidden className="mt-[1px]">
+              !
+            </span>
             {error}
           </p>
         )}

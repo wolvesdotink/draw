@@ -58,11 +58,7 @@ const CanvasImpl: FC<CanvasProps> = ({
   );
 
   return (
-    <div
-      ref={containerRef}
-      className="canvas absolute inset-0 flex"
-      data-gesture={dataGesture}
-    >
+    <div ref={containerRef} className="canvas absolute inset-0 flex" data-gesture={dataGesture}>
       <Excalidraw
         key={`${filePath}::${loadVersion}`}
         initialData={{

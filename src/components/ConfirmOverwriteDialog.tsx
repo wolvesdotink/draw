@@ -50,8 +50,7 @@ export const ConfirmOverwriteDialog: FC<ConfirmOverwriteDialogProps> = ({
         if (e.target === e.currentTarget) onCancel();
       }}
       style={{
-        background:
-          "color-mix(in srgb, var(--bg) 30%, rgba(0,0,0,0.65))",
+        background: "color-mix(in srgb, var(--bg) 30%, rgba(0,0,0,0.65))",
       }}
     >
       <div className="relative bg-bg text-text border-2 border-border px-7 py-6 min-w-[420px] max-w-[480px] animate-pop-in brutal-shadow-pop">
@@ -68,8 +67,8 @@ export const ConfirmOverwriteDialog: FC<ConfirmOverwriteDialogProps> = ({
         </p>
 
         <p className="m-0 mb-6 text-[12.5px] leading-relaxed font-mono text-text">
-          A drawing with that name already exists at this location. Overwrite
-          it, pick a different name, or cancel the import.
+          A drawing with that name already exists at this location. Overwrite it, pick a different
+          name, or cancel the import.
         </p>
 
         <div className="flex flex-wrap items-center gap-2 justify-end">

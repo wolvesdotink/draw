@@ -177,9 +177,7 @@ export const Sidebar: FC<SidebarProps> = ({
     setMenu(null);
     const isActive = node.path === activePath;
     const isAncestorOfActive =
-      node.kind === "dir" &&
-      activePath !== null &&
-      activePath.startsWith(`${node.path}/`);
+      node.kind === "dir" && activePath !== null && activePath.startsWith(`${node.path}/`);
     const label = node.kind === "dir" ? "folder" : "drawing";
     const confirmed = await appDialog.confirm({
       title: `Delete ${label}`,
@@ -205,57 +203,54 @@ export const Sidebar: FC<SidebarProps> = ({
 
   const submitDialog = async (name: string) => {
     if (dialog === null) return;
-    try {
-      if (dialog.mode === "newFile") {
-        const newPath = await fileTree.createFile(dialog.parentDir, name, theme);
-        // Auto-expand the parent folder so the new file is visible
-        if (dialog.parentDir) {
-          setExpanded((prev) => {
-            const next = new Set(prev);
-            next.add(dialog.parentDir);
-            persistExpanded(next);
-            return next;
-          });
-        }
-        onSelectFile(newPath);
-      } else if (dialog.mode === "newFolder") {
-        const newPath = await fileTree.createFolder(dialog.parentDir, name);
-        if (dialog.parentDir) {
-          setExpanded((prev) => {
-            const next = new Set(prev);
-            next.add(dialog.parentDir);
-            next.add(newPath);
-            persistExpanded(next);
-            return next;
-          });
-        } else {
-          setExpanded((prev) => {
-            const next = new Set(prev);
-            next.add(newPath);
-            persistExpanded(next);
-            return next;
-          });
-        }
-      } else if (dialog.mode === "rename" && dialog.targetPath) {
-        const newPath = await fileTree.rename(dialog.targetPath, name);
-        // If we renamed a file (or dir) that contained the active path, update.
-        const wasActive = activePath === dialog.targetPath;
-        const wasAncestor =
-          dialog.targetKind === "dir" &&
-          activePath !== null &&
-          activePath.startsWith(`${dialog.targetPath}/`);
-        if (wasActive) {
-          onActiveFileMoved(newPath);
-        } else if (wasAncestor && activePath) {
-          const tail = activePath.slice(dialog.targetPath.length); // e.g. "/foo.excalidraw"
-          onActiveFileMoved(`${newPath}${tail}`);
-        }
+    // Errors propagate to the caller (handled where submitDialog is awaited),
+    // so we don't wrap the body — a bare catch-and-rethrow added nothing.
+    if (dialog.mode === "newFile") {
+      const newPath = await fileTree.createFile(dialog.parentDir, name, theme);
+      // Auto-expand the parent folder so the new file is visible
+      if (dialog.parentDir) {
+        setExpanded((prev) => {
+          const next = new Set(prev);
+          next.add(dialog.parentDir);
+          persistExpanded(next);
+          return next;
+        });
       }
-      setDialog(null);
-    } catch (e) {
-      // re-throw so the dialog displays the error
-      throw e;
+      onSelectFile(newPath);
+    } else if (dialog.mode === "newFolder") {
+      const newPath = await fileTree.createFolder(dialog.parentDir, name);
+      if (dialog.parentDir) {
+        setExpanded((prev) => {
+          const next = new Set(prev);
+          next.add(dialog.parentDir);
+          next.add(newPath);
+          persistExpanded(next);
+          return next;
+        });
+      } else {
+        setExpanded((prev) => {
+          const next = new Set(prev);
+          next.add(newPath);
+          persistExpanded(next);
+          return next;
+        });
+      }
+    } else if (dialog.mode === "rename" && dialog.targetPath) {
+      const newPath = await fileTree.rename(dialog.targetPath, name);
+      // If we renamed a file (or dir) that contained the active path, update.
+      const wasActive = activePath === dialog.targetPath;
+      const wasAncestor =
+        dialog.targetKind === "dir" &&
+        activePath !== null &&
+        activePath.startsWith(`${dialog.targetPath}/`);
+      if (wasActive) {
+        onActiveFileMoved(newPath);
+      } else if (wasAncestor && activePath) {
+        const tail = activePath.slice(dialog.targetPath.length); // e.g. "/foo.excalidraw"
+        onActiveFileMoved(`${newPath}${tail}`);
+      }
     }
+    setDialog(null);
   };
 
   const handleRootContextMenu = (e: React.MouseEvent) => {
@@ -297,10 +292,7 @@ export const Sidebar: FC<SidebarProps> = ({
       // Compute active-file fate before the FS hit so we can reopen post-move.
       const isDir = !sourcePath.endsWith(".excalidraw");
       const wasActive = activePath === sourcePath;
-      const wasAncestor =
-        isDir &&
-        activePath !== null &&
-        activePath.startsWith(`${sourcePath}/`);
+      const wasAncestor = isDir && activePath !== null && activePath.startsWith(`${sourcePath}/`);
       try {
         const newPath = await fileTree.move(sourcePath, targetParentDir);
         // Auto-expand the destination so the user can see what they just did.
@@ -406,9 +398,7 @@ export const Sidebar: FC<SidebarProps> = ({
 
       <div
         className={`scroll-quiet flex-1 overflow-y-auto overflow-x-hidden pt-0.5 pb-3 ${
-          dragSource !== null && dragOverPath === ""
-            ? "drop-target-root"
-            : ""
+          dragSource !== null && dragOverPath === "" ? "drop-target-root" : ""
         }`}
         onContextMenu={handleRootContextMenu}
         onDragOver={handleRootDragOver}
@@ -417,9 +407,7 @@ export const Sidebar: FC<SidebarProps> = ({
         {fileTree.loading && fileTree.tree.length === 0 ? (
           <p className="px-4 py-6 text-[12px] text-text-muted italic">Loading…</p>
         ) : fileTree.error ? (
-          <p className="px-4 py-6 text-[12px] text-danger">
-            Error: {fileTree.error.message}
-          </p>
+          <p className="px-4 py-6 text-[12px] text-danger">Error: {fileTree.error.message}</p>
         ) : fileTree.tree.length === 0 ? (
           <div className="px-4 py-5 text-[12px] text-text-muted leading-relaxed">
             <p className="m-0">
@@ -521,20 +509,14 @@ export const Sidebar: FC<SidebarProps> = ({
                   New folder in here
                 </button>
               </li>
-              <li
-                className="my-1 h-px mx-2 bg-border"
-                role="separator"
-                aria-hidden
-              />
+              <li className="my-1 h-px mx-2 bg-border" role="separator" aria-hidden />
               <li className="m-0 p-0">
                 <button
                   type="button"
                   className={ctxItemBtn}
                   onClick={() => openRenameDialog(menu.node!)}
                 >
-                  <span className="w-3.5 inline-flex justify-center text-text-muted">
-                    ✎
-                  </span>
+                  <span className="w-3.5 inline-flex justify-center text-text-muted">✎</span>
                   Rename
                 </button>
               </li>
@@ -557,9 +539,7 @@ export const Sidebar: FC<SidebarProps> = ({
                   className={ctxItemBtn}
                   onClick={() => openRenameDialog(menu.node!)}
                 >
-                  <span className="w-3.5 inline-flex justify-center text-text-muted">
-                    ✎
-                  </span>
+                  <span className="w-3.5 inline-flex justify-center text-text-muted">✎</span>
                   Rename
                 </button>
               </li>

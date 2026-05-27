@@ -122,11 +122,7 @@ export function useAutoSave(): UseAutoSaveResult {
   }, [flushPending]);
 
   const onChange = useCallback(
-    (
-      elements: readonly ExcalidrawElement[],
-      appState: AppState,
-      files: BinaryFiles,
-    ) => {
+    (elements: readonly ExcalidrawElement[], appState: AppState, files: BinaryFiles) => {
       const path = activePathRef.current;
       if (path === null || apiRef.current === null) return;
 

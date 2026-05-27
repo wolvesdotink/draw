@@ -17,12 +17,7 @@ export interface AlertDialogProps {
   onClose: () => void;
 }
 
-export const AlertDialog: FC<AlertDialogProps> = ({
-  title,
-  body,
-  okLabel = "OK",
-  onClose,
-}) => {
+export const AlertDialog: FC<AlertDialogProps> = ({ title, body, okLabel = "OK", onClose }) => {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape" || e.key === "Enter") {

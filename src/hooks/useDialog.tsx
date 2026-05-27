@@ -27,14 +27,7 @@
  *   matches how window.confirm() blocks). Each call returns a Promise that
  *   resolves when the user closes the dialog.
  */
-import {
-  createContext,
-  useCallback,
-  useContext,
-  useMemo,
-  useState,
-  type ReactNode,
-} from "react";
+import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from "react";
 import { ConfirmDialog } from "../components/ConfirmDialog";
 import { AlertDialog } from "../components/AlertDialog";
 
@@ -96,9 +89,7 @@ export function DialogProvider({ children }: { children: ReactNode }) {
     (options: AlertOptions | string) =>
       new Promise<void>((resolve) => {
         const opts: AlertOptions =
-          typeof options === "string"
-            ? { title: "Notice", body: options }
-            : options;
+          typeof options === "string" ? { title: "Notice", body: options } : options;
         setPending((prev) => {
           if (prev !== null) {
             resolve();
